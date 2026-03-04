@@ -40,6 +40,16 @@
 				"./..."
 			],
 			"isBackground": false
+		},
+		{
+			"label": "prr-git-add-tasks-cleanup",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"add",
+				".vscode/tasks.json"
+			],
+			"isBackground": false
 		}
 	]
 }
