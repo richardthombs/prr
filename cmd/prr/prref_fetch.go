@@ -43,29 +43,49 @@ var prrefFetchCmd = &cobra.Command{
 	Short: "Fetch PR merge ref into PRR namespace",
 	Long:  "Fetch the provider PR merge ref into refs/prr/pull/<PR_ID>/merge and emit JSON including mergeRef.",
 	RunE: func(cmd *cobra.Command, _ []string) error {
+		stdinInput, hasStdinInput, err := readOptionalComposeInput(cmd)
+		if err != nil {
+			return err
+		}
+
 		prID, err := cmd.Flags().GetInt("pr-id")
 		if err != nil {
 			return apperrors.WrapRuntime("failed to parse pr-id flag", err)
+		}
+		if prID == 0 && hasStdinInput {
+			prID = stdinInput.PRID
 		}
 
 		repoURL, err := cmd.Flags().GetString("repo")
 		if err != nil {
 			return apperrors.WrapRuntime("failed to parse repo flag", err)
 		}
+		if repoURL == "" && hasStdinInput {
+			repoURL = stdinInput.RepoURL
+		}
 
 		remote, err := cmd.Flags().GetString("remote")
 		if err != nil {
 			return apperrors.WrapRuntime("failed to parse remote flag", err)
+		}
+		if !cmd.Flags().Changed("remote") && hasStdinInput && stdinInput.Remote != "" {
+			remote = stdinInput.Remote
 		}
 
 		providerName, err := cmd.Flags().GetString("provider")
 		if err != nil {
 			return apperrors.WrapRuntime("failed to parse provider flag", err)
 		}
+		if providerName == "" && hasStdinInput {
+			providerName = stdinInput.Provider
+		}
 
 		bareDir, err := cmd.Flags().GetString("bare-dir")
 		if err != nil {
 			return apperrors.WrapRuntime("failed to parse bare-dir flag", err)
+		}
+		if bareDir == "" && hasStdinInput {
+			bareDir = stdinInput.BareDir
 		}
 
 		verbose, err := cmd.Flags().GetBool("verbose")

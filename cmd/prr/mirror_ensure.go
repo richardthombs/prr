@@ -17,8 +17,11 @@ var mirrorServiceFactory = func() *git.Service {
 }
 
 type mirrorEnsureOutput struct {
+	PRID    int    `json:"prId,omitempty"`
 	RepoURL string `json:"repoUrl"`
-	BareDir string `json:"bareDir"`
+	Remote   string `json:"remote,omitempty"`
+	Provider string `json:"provider,omitempty"`
+	BareDir  string `json:"bareDir"`
 }
 
 func init() {
@@ -43,9 +46,17 @@ var mirrorEnsureCmd = &cobra.Command{
 	Short: "Create or update bare mirror for repository",
 	Long:  "Create or update the deterministic bare mirror location for a repository and emit JSON including bareDir.",
 	RunE: func(cmd *cobra.Command, _ []string) error {
+		stdinInput, hasStdinInput, err := readOptionalComposeInput(cmd)
+		if err != nil {
+			return err
+		}
+
 		repoURL, err := cmd.Flags().GetString("repo")
 		if err != nil {
 			return apperrors.WrapRuntime("failed to parse repo flag", err)
+		}
+		if repoURL == "" && hasStdinInput {
+			repoURL = stdinInput.RepoURL
 		}
 
 		verbose, err := cmd.Flags().GetBool("verbose")
@@ -109,7 +120,13 @@ var mirrorEnsureCmd = &cobra.Command{
 			_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "[prr] mirror ensure: completed (%s)\n", bareDir)
 		}
 
-		payload, err := json.Marshal(mirrorEnsureOutput{RepoURL: repoURL, BareDir: bareDir})
+		payload, err := json.Marshal(mirrorEnsureOutput{
+			PRID:    stdinInput.PRID,
+			RepoURL:  repoURL,
+			Remote:   stdinInput.Remote,
+			Provider: stdinInput.Provider,
+			BareDir:  bareDir,
+		})
 		if err != nil {
 			return apperrors.WrapRuntime("failed to encode mirror ensure JSON", err)
 		}
