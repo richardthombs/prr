@@ -125,6 +125,52 @@ func TestResolveCommandDetectsGitHubProviderFromURL(t *testing.T) {
 	}
 }
 
+func TestResolveCommandAllowsProviderAndRemoteOverrides(t *testing.T) {
+	resetResolveFlagState(t)
+
+	stdout := &bytes.Buffer{}
+	rootCmd.SetOut(stdout)
+	rootCmd.SetErr(&bytes.Buffer{})
+	rootCmd.SetArgs([]string{
+		"resolve",
+		"https://github.com/steveyegge/beads/pull/2331",
+		"--provider",
+		"github-enterprise",
+		"--remote",
+		"upstream",
+	})
+
+	err := Execute()
+	if err != nil {
+		t.Fatalf("expected success with provider/remote overrides, got error: %v", err)
+	}
+
+	output := strings.TrimSpace(stdout.String())
+	if !strings.Contains(output, `"provider":"github-enterprise"`) {
+		t.Fatalf("expected provider override in output, got %q", output)
+	}
+	if !strings.Contains(output, `"remote":"upstream"`) {
+		t.Fatalf("expected remote override in output, got %q", output)
+	}
+}
+
+func TestResolveCommandInvalidInputMapsToStableNonZeroExitCode(t *testing.T) {
+	resetResolveFlagState(t)
+
+	rootCmd.SetOut(&bytes.Buffer{})
+	rootCmd.SetErr(&bytes.Buffer{})
+	rootCmd.SetArgs([]string{"resolve", "not-a-url"})
+
+	err := Execute()
+	if err == nil {
+		t.Fatalf("expected error for invalid PR URL")
+	}
+
+	if got := apperrors.ExitCode(err); got != 2 {
+		t.Fatalf("expected stable config exit code 2, got %d", got)
+	}
+}
+
 func TestResolveCommandFailsForInvalidArgumentCount(t *testing.T) {
 	resetResolveFlagState(t)
 

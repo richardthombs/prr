@@ -42,5 +42,5 @@ PRR is a CLI tool that automates pull request review from a single command by cr
 - `prr --help`  
   Show CLI help and available options.
 
-- `prr --version`  
+- `prr version`  
   Show the installed PRR version.

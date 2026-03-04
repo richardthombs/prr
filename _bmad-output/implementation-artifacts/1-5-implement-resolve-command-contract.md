@@ -1,6 +1,6 @@
 # Story 1.5: Implement Resolve Command Contract
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -130,7 +130,26 @@ GPT-5.3-Codex
 - internal/provider/resolver_test.go
 - internal/types/prref.go
 
+### Senior Developer Review (AI)
+
+- Date: 2026-03-04
+- Reviewer: Richard (AI-assisted)
+- Outcome: Changes requested and fixed in-session
+
+#### Findings
+
+- Medium: Invalid PR URL diagnostics in resolver were too generic and did not preserve parse reason detail required for actionable failures.
+- Medium: Resolve command tests did not verify `--provider` and `--remote` override behaviour despite those flags being part of the contract.
+- Medium: Resolve failure tests asserted error class only and did not assert stable non-zero exit-code mapping expected by automation contracts.
+
+#### Fixes Applied
+
+- Improved `ResolveFromPullRequestURL` diagnostics to include concrete parse failure reason in config-class error messages.
+- Added command test coverage for combined `--provider` and `--remote` overrides.
+- Added command test coverage asserting stable config failure exit code (`2`) for invalid PR URL input.
+
 ### Change Log
 
+- 2026-03-04: Senior Developer Review (AI) completed; strengthened resolve invalid-URL diagnostics and added override/exit-code regression tests; status moved to `done`.
 - 2026-03-04: Implemented Story 1.5 resolve command contract, typed PRRef output, provider/config boundary delegation, centralised error/exit mapping, and baseline test coverage.
 - 2026-03-04: Updated resolve command specification to PR URL input with provider auto-detection (Azure DevOps and GitHub).

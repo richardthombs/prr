@@ -1,6 +1,6 @@
 # Story 1.6: Implement Mirror Ensure and PRRef Fetch Commands
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -122,6 +122,25 @@ GPT-5.3-Codex
 - internal/git/mirror_test.go
 - _bmad-output/implementation-artifacts/1-6-implement-mirror-ensure-and-prref-fetch-commands.md
 
+### Senior Developer Review (AI)
+
+- Date: 2026-03-04
+- Reviewer: Richard (AI-assisted)
+- Outcome: Changes requested and fixed in-session
+
+#### Findings
+
+- Medium: `prr prref fetch` lacked `--verbose` and `--what-if` command behaviour parity with the composable command set expectations.
+- Medium: No explicit regression coverage for `prr prref fetch --what-if` to prove command logging and no external execution.
+- Low: Story File List included `README.md` without current working-tree evidence during review; retained historical entry and recorded review-time deltas in Change Log.
+
+#### Fixes Applied
+
+- Added `--verbose` and `--what-if` flags to `prr prref fetch` and stderr diagnostics while preserving JSON payloads on stdout.
+- Added options-aware fetch execution path in `internal/git` so fetch supports logged command previews and true no-exec what-if operation.
+- Added regression test to verify `prref fetch --what-if` prints the planned git fetch command and skips external execution.
+
 ## Change Log
 
+- 2026-03-04: Senior Developer Review (AI) completed; added `prref fetch` verbose/what-if behaviour, options-aware fetch path, and regression coverage; status moved to `done`.
 - 2026-03-04: Implemented Story 1.6 command wiring and internal git mirror/fetch abstractions with tests; status moved to `review`.

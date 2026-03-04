@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	apperrors "github.com/richardthombs/prr/internal/errors"
+	"github.com/richardthombs/prr/internal/git"
 	"github.com/spf13/cobra"
 )
 
@@ -27,6 +28,8 @@ func init() {
 	prrefFetchCmd.Flags().String("remote", "origin", "Git remote name")
 	prrefFetchCmd.Flags().String("provider", "", "PR provider")
 	prrefFetchCmd.Flags().String("bare-dir", "", "Explicit bare mirror directory; defaults to deterministic repo mirror path")
+	prrefFetchCmd.Flags().Bool("verbose", false, "Emit progress logs to stderr")
+	prrefFetchCmd.Flags().Bool("what-if", false, "Show commands that would be executed without running them")
 }
 
 var prrefCmd = &cobra.Command{
@@ -65,6 +68,16 @@ var prrefFetchCmd = &cobra.Command{
 			return apperrors.WrapRuntime("failed to parse bare-dir flag", err)
 		}
 
+		verbose, err := cmd.Flags().GetBool("verbose")
+		if err != nil {
+			return apperrors.WrapRuntime("failed to parse verbose flag", err)
+		}
+
+		whatIf, err := cmd.Flags().GetBool("what-if")
+		if err != nil {
+			return apperrors.WrapRuntime("failed to parse what-if flag", err)
+		}
+
 		service := mirrorServiceFactory()
 		if bareDir == "" {
 			resolvedDir, resolveErr := service.ResolveMirrorDir(repoURL)
@@ -74,9 +87,26 @@ var prrefFetchCmd = &cobra.Command{
 			bareDir = resolvedDir
 		}
 
-		mergeRef, err := service.FetchPRMergeRef(context.Background(), bareDir, remote, prID)
+		if verbose {
+			_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "[prr] prref fetch: fetching pull/%d/merge from %s into PRR namespace\n", prID, remote)
+			if whatIf {
+				_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "[prr] prref fetch: what-if enabled, no external commands will be executed")
+			}
+		}
+
+		mergeRef, err := service.FetchPRMergeRefWithOptions(context.Background(), bareDir, remote, prID, git.EnsureOptions{
+			Verbose: verbose || whatIf,
+			WhatIf:  whatIf,
+			Logger: func(format string, args ...any) {
+				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "[prr] "+format+"\n", args...)
+			},
+		})
 		if err != nil {
 			return err
+		}
+
+		if verbose || whatIf {
+			_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "[prr] prref fetch: completed (%s)\n", mergeRef)
 		}
 
 		payload, err := json.Marshal(prrefFetchOutput{

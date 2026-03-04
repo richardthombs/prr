@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/richardthombs/prr/internal/config"
@@ -42,7 +43,7 @@ func (r *Resolver) Resolve(ctx context.Context, prID int, opts ResolveOptions) (
 func (r *Resolver) ResolveFromPullRequestURL(ctx context.Context, prURL string, opts ResolveOptions) (types.PRRef, error) {
 	parsedContext, err := parsePullRequestURL(strings.TrimSpace(prURL))
 	if err != nil {
-		return types.PRRef{}, apperrors.WrapConfig("invalid pull request URL", err)
+		return types.PRRef{}, apperrors.WrapConfig(fmt.Sprintf("invalid pull request URL: %v", err), nil)
 	}
 
 	repoURL := parsedContext.RepoURL

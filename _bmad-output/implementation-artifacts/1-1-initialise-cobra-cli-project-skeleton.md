@@ -1,6 +1,6 @@
 # Story 1.1: Initialise Cobra CLI Project Skeleton
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -131,6 +131,7 @@ GPT-5.3-Codex
 - _bmad-output/implementation-artifacts/1-1-initialise-cobra-cli-project-skeleton.md
 - .gitignore
 - Makefile
+- README.md
 - cmd/prr/main.go
 - cmd/prr/publish.go
 - cmd/prr/review.go
@@ -140,6 +141,25 @@ GPT-5.3-Codex
 - go.mod
 - go.sum
 
+### Senior Developer Review (AI)
+
+- Date: 2026-03-04
+- Reviewer: Richard (AI-assisted)
+- Outcome: Changes requested and fixed in-session
+
+#### Findings
+
+- Medium: Story AC required scaffold help-command verification, but there was no automated smoke test asserting `prr --help` success.
+- Medium: Baseline scaffold tests did not verify `prr version` output contract, reducing confidence in command-surface readiness.
+- Medium: README command reference used `prr --version`, while implementation exposes the `version` subcommand (`prr version`).
+
+#### Fixes Applied
+
+- Added root help smoke test to assert successful execution and expected usage output.
+- Added version command test to assert deterministic output from `prr version`.
+- Corrected README command reference from `prr --version` to `prr version`.
+
 ## Change Log
 
+- 2026-03-04: Senior Developer Review (AI) completed; added help/version scaffold smoke tests and corrected README version command reference; status moved to `done`.
 - 2026-03-04: Implemented Story 1.1 Cobra CLI scaffold, aligned command layout to architecture, added placeholder commands, and added baseline tests.

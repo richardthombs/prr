@@ -118,6 +118,10 @@ func (s *Service) runCommand(ctx context.Context, opts EnsureOptions, name strin
 }
 
 func (s *Service) FetchPRMergeRef(ctx context.Context, bareDir, remote string, prID int) (string, error) {
+	return s.FetchPRMergeRefWithOptions(ctx, bareDir, remote, prID, EnsureOptions{})
+}
+
+func (s *Service) FetchPRMergeRefWithOptions(ctx context.Context, bareDir, remote string, prID int, opts EnsureOptions) (string, error) {
 	trimmedBareDir := strings.TrimSpace(bareDir)
 	if trimmedBareDir == "" {
 		return "", apperrors.WrapConfig("bare mirror directory is required; provide --bare-dir", nil)
@@ -136,7 +140,7 @@ func (s *Service) FetchPRMergeRef(ctx context.Context, bareDir, remote string, p
 	sourceRef := "pull/" + strconv.Itoa(prID) + "/merge"
 	destination := sourceRef + ":" + mergeRef
 
-	_, err := s.runner.Run(ctx, "git", "-C", trimmedBareDir, "fetch", trimmedRemote, destination)
+	_, err := s.runCommand(ctx, opts, "git", "-C", trimmedBareDir, "fetch", trimmedRemote, destination)
 	if err != nil {
 		return "", apperrors.WrapProvider("failed to fetch PR merge ref", err)
 	}

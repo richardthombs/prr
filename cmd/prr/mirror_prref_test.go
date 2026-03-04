@@ -173,6 +173,48 @@ func TestPRRefFetchClassifiesFetchFailureAsProviderError(t *testing.T) {
 	}
 }
 
+func TestPRRefFetchWhatIfPrintsPlannedCommandAndSkipsExecution(t *testing.T) {
+	resetMirrorPRRefFlagState(t)
+
+	originalFactory := mirrorServiceFactory
+	t.Cleanup(func() {
+		mirrorServiceFactory = originalFactory
+	})
+
+	runner := &stubRunner{runFunc: func(_ context.Context, _ string, _ ...string) (string, error) {
+		t.Fatalf("expected no external command execution in what-if mode")
+		return "", nil
+	}}
+	service := git.NewServiceWithCacheDir(runner, t.TempDir())
+
+	mirrorServiceFactory = func() *git.Service {
+		return service
+	}
+
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	rootCmd.SetOut(stdout)
+	rootCmd.SetErr(stderr)
+	rootCmd.SetArgs([]string{"prref", "fetch", "--pr-id", "202", "--bare-dir", "/tmp/mirror.git", "--what-if"})
+
+	if err := Execute(); err != nil {
+		t.Fatalf("expected prref fetch what-if to succeed, got %v", err)
+	}
+
+	if !strings.Contains(stderr.String(), "exec: git -C /tmp/mirror.git fetch origin pull/202/merge:refs/prr/pull/202/merge") {
+		t.Fatalf("expected planned git fetch command in stderr, got %q", stderr.String())
+	}
+
+	var payload map[string]any
+	if err := json.Unmarshal(bytes.TrimSpace(stdout.Bytes()), &payload); err != nil {
+		t.Fatalf("expected valid JSON output, got %v", err)
+	}
+
+	if payload["mergeRef"] != "refs/prr/pull/202/merge" {
+		t.Fatalf("expected mergeRef in payload, got %#v", payload["mergeRef"])
+	}
+}
+
 func TestMirrorEnsureFailsWithoutRepo(t *testing.T) {
 	resetMirrorPRRefFlagState(t)
 
@@ -227,5 +269,11 @@ func resetMirrorPRRefFlagState(t *testing.T) {
 	}
 	if err := prrefFetchCmd.Flags().Set("bare-dir", ""); err != nil {
 		t.Fatalf("failed to reset prref --bare-dir flag: %v", err)
+	}
+	if err := prrefFetchCmd.Flags().Set("verbose", "false"); err != nil {
+		t.Fatalf("failed to reset prref --verbose flag: %v", err)
+	}
+	if err := prrefFetchCmd.Flags().Set("what-if", "false"); err != nil {
+		t.Fatalf("failed to reset prref --what-if flag: %v", err)
 	}
 }
