@@ -26,6 +26,7 @@ classification:
   domain: general
   complexity: low
   projectContext: greenfield
+date: '2026-03-04'
 workflowType: 'prd'
 ---
 
@@ -234,7 +235,7 @@ The CLI should be structured around a pipeline of deterministic stages: PR resol
 
 - FR5: PRR can maintain a cached mirror per repository for repeat reviews.
 - FR6: PRR can update cached repository state before review processing.
-- FR7: PRR can prevent concurrent corruption when multiple reviews target the same repository.
+- FR7: PRR can prevent concurrent corruption when up to 5 concurrent reviews target the same repository.
 - FR8: PRR can fetch a PR merge snapshot into an internal review namespace.
 - FR9: PRR can fail with an explicit message when required merge snapshot refs are unavailable.
 
