@@ -2,10 +2,9 @@ package git
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -154,10 +153,113 @@ func (s *Service) ResolveMirrorDir(repoURL string) (string, error) {
 		return "", apperrors.WrapConfig("repository context is required; provide --repo", nil)
 	}
 
-	hash := sha256.Sum256([]byte(trimmedRepo))
-	repoHash := hex.EncodeToString(hash[:])
+	repoSlug := repoSlugFromURL(trimmedRepo)
 
-	return filepath.Join(s.cacheDir, repoHash+".git"), nil
+	return filepath.Join(s.cacheDir, repoSlug+".git"), nil
+}
+
+func repoSlugFromURL(rawRepoURL string) string {
+	provider := "repo"
+	primarySegment := "unknown"
+	repoSegment := "repo"
+
+	if parsedURL, err := url.Parse(rawRepoURL); err == nil && strings.TrimSpace(parsedURL.Host) != "" {
+		host := strings.ToLower(strings.TrimSpace(parsedURL.Host))
+		provider = providerFromHost(host)
+
+		pathSegments := pathSegmentsFromRepoURL(parsedURL.Path)
+		scope, repo := scopeAndRepoFromSegments(pathSegments)
+		if scope != "" {
+			primarySegment = scope
+		}
+		if repo != "" {
+			repoSegment = repo
+		}
+	} else {
+		slug := sanitizeSlugPart(rawRepoURL)
+		if slug != "" {
+			return slug
+		}
+	}
+
+	return strings.Join([]string{provider, primarySegment, repoSegment}, "-")
+}
+
+func providerFromHost(host string) string {
+	switch host {
+	case "github.com":
+		return "github"
+	case "dev.azure.com":
+		return "azure"
+	default:
+		firstLabel := host
+		if idx := strings.Index(firstLabel, "."); idx > 0 {
+			firstLabel = firstLabel[:idx]
+		}
+		sanitized := sanitizeSlugPart(firstLabel)
+		if sanitized == "" {
+			return "repo"
+		}
+
+		return sanitized
+	}
+}
+
+func pathSegmentsFromRepoURL(path string) []string {
+	rawSegments := strings.Split(strings.Trim(path, "/"), "/")
+	segments := make([]string, 0, len(rawSegments))
+	for _, segment := range rawSegments {
+		trimmed := strings.TrimSpace(segment)
+		if trimmed == "" || strings.EqualFold(trimmed, "_git") {
+			continue
+		}
+
+		cleaned := strings.TrimSuffix(trimmed, ".git")
+		cleaned = sanitizeSlugPart(cleaned)
+		if cleaned != "" {
+			segments = append(segments, cleaned)
+		}
+	}
+
+	return segments
+}
+
+func scopeAndRepoFromSegments(segments []string) (string, string) {
+	if len(segments) == 0 {
+		return "", ""
+	}
+
+	if len(segments) == 1 {
+		return segments[0], segments[0]
+	}
+
+	return segments[0], segments[len(segments)-1]
+}
+
+func sanitizeSlugPart(value string) string {
+	lower := strings.ToLower(strings.TrimSpace(value))
+	if lower == "" {
+		return ""
+	}
+
+	builder := strings.Builder{}
+	builder.Grow(len(lower))
+	lastWasDash := false
+	for _, char := range lower {
+		isAlphaNum := (char >= 'a' && char <= 'z') || (char >= '0' && char <= '9')
+		if isAlphaNum {
+			builder.WriteRune(char)
+			lastWasDash = false
+			continue
+		}
+
+		if !lastWasDash {
+			builder.WriteRune('-')
+			lastWasDash = true
+		}
+	}
+
+	return strings.Trim(builder.String(), "-")
 }
 
 func MergeRefForPRID(prID int) string {

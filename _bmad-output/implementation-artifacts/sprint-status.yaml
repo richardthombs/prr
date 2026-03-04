@@ -47,7 +47,7 @@ development_status:
   1-4-implement-config-loading-validation-and-precedence: backlog
   1-5-implement-resolve-command-contract: done
   1-6-implement-mirror-ensure-and-prref-fetch-commands: done
-  1-7-implement-worktree-add-command-with-cleanup-keep-compatibility: review
+  1-7-implement-worktree-add-command-with-cleanup-keep-compatibility: done
   1-8-implement-diff-and-bundle-composable-commands: ready-for-dev
   1-9-implement-review-engine-render-and-publish-composable-commands: ready-for-dev
   epic-1-retrospective: optional

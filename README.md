@@ -19,27 +19,10 @@ PRR is a CLI tool that automates pull request review from a single command by cr
 - `prr review <PR_ID> --provider <provider> --repo <owner/repo>`  
   Override inferred provider/repository context.
 
-- `prr resolve <PR_URL>`
-  Resolve PR context into stable `PRRef` JSON (`prId`, `repoUrl`, `remote`, `provider`) from a pull-request URL.
-
-- `prr resolve https://dev.azure.com/<org>/<project>/_git/<repo>/pullrequest/<id>`
-  Auto-detect Azure DevOps provider context.
-
-- `prr resolve https://github.com/<owner>/<repo>/pull/<id>`
-  Auto-detect GitHub provider context.
-
-- `prr mirror ensure --repo <repoUrl> [--verbose] [--lock-timeout <duration>] [--force] [--what-if]`
-  Create or update the deterministic bare mirror cache and emit JSON including `bareDir`.
-  Use `--verbose` for stage and pre-execution command logs, `--lock-timeout` to fail fast if another run holds the lock, `--force` to bypass lock acquisition, and `--what-if` to print commands without executing them.
-  During long-running git operations (for example clone/fetch/worktree), git progress output is streamed to stderr.
-
-- `prr prref fetch --pr-id <id> [--repo <repoUrl>] [--remote <name>] [--provider <provider>] [--bare-dir <path>] [--verbose] [--what-if]`
-  Fetch `pull/<id>/merge` into `refs/prr/pull/<id>/merge` and emit JSON including `mergeRef`.
-  If `--bare-dir` is omitted, PRR resolves the deterministic mirror path from `--repo`.
-
-- `prr worktree add --pr-id <id> --bare-dir <path> --merge-ref <ref> [--keep] [--verbose] [--what-if]`
-  Create a detached isolated worktree and emit JSON including `workDir`.
-  By default, worktrees are cleaned up after review; use `--keep` to retain for inspection.
+- `prr checkout <PR_URL> [--provider <provider>] [--repo <repoUrl>] [--remote <name>] [--keep] [--verbose] [--what-if]`
+  Resolve PR context, ensure/update mirror, fetch merge ref, and prepare/reset the isolated worktree in one command.
+  Emits a single JSON payload including `prId`, `repoUrl`, `remote`, `provider`, `bareDir`, `mergeRef`, `workDir`, `keep`, and `cleanup`.
+  Supports Azure DevOps and GitHub PR URL formats.
 
 - `prr review <PR_ID> --max-patch-bytes <bytes> --max-files <count>`  
   Override safety limits for patch size and changed file count.
@@ -50,16 +33,12 @@ PRR is a CLI tool that automates pull request review from a single command by cr
 - `prr version`  
   Show the installed PRR version.
 
-## Composable pipeline example
+## Checkout example
 
 ```bash
-# Each stage reads JSON from stdin and emits JSON to stdout.
-# Equivalent flags are also supported when needed.
+# Single-step checkout for PR workspace preparation.
 
-prr resolve "https://github.com/<owner>/<repo>/pull/<id>" \
-  | prr mirror ensure \
-  | prr prref fetch \
-  | prr worktree add
+prr checkout "https://github.com/<owner>/<repo>/pull/<id>"
 ```
 
-The pipeline output after `worktree add` includes workspace fields (for example `bareDir`, `mergeRef`, `workDir`) ready for downstream `diff` and `bundle` stages.
+The `checkout` output includes workspace fields (for example `bareDir`, `mergeRef`, `workDir`) ready for downstream `diff` and `bundle` stages.

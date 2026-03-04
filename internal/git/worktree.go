@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"time"
 
 	apperrors "github.com/richardthombs/prr/internal/errors"
 )
@@ -27,6 +26,46 @@ func (s *Service) CreateWorktree(ctx context.Context, bareDir, mergeRef, workDir
 		return apperrors.WrapConfig("worktree directory is required", nil)
 	}
 
+	if stat, err := os.Stat(trimmedWorkDir); err == nil {
+		if !stat.IsDir() {
+			return apperrors.WrapRuntime("worktree path exists and is not a directory", nil)
+		}
+
+		if opts.WhatIf {
+			_, resetErr := s.runCommand(ctx, opts, "git", "-C", trimmedWorkDir, "reset", "--hard", trimmedMergeRef)
+			if resetErr != nil {
+				return apperrors.WrapRuntime("failed to reset existing worktree to merge ref", resetErr)
+			}
+
+			return nil
+		}
+
+		isWorktree, probeErr := s.isValidWorktreeDir(ctx, trimmedWorkDir)
+		if probeErr != nil {
+			return apperrors.WrapRuntime("failed to inspect existing worktree", probeErr)
+		}
+
+		if isWorktree {
+			_, resetErr := s.runCommand(ctx, opts, "git", "-C", trimmedWorkDir, "reset", "--hard", trimmedMergeRef)
+			if resetErr != nil {
+				return apperrors.WrapRuntime("failed to reset existing worktree to merge ref", resetErr)
+			}
+
+			return nil
+		}
+
+		if removeErr := os.RemoveAll(trimmedWorkDir); removeErr != nil {
+			return apperrors.WrapRuntime("failed to remove invalid existing worktree path", removeErr)
+		}
+
+		_, pruneErr := s.runCommand(ctx, opts, "git", "-C", trimmedBareDir, "worktree", "prune")
+		if pruneErr != nil {
+			return apperrors.WrapRuntime("failed to prune stale worktree metadata", pruneErr)
+		}
+	} else if !os.IsNotExist(err) {
+		return apperrors.WrapRuntime("failed to inspect worktree path", err)
+	}
+
 	if !opts.WhatIf {
 		if err := os.MkdirAll(filepath.Dir(trimmedWorkDir), 0o755); err != nil {
 			return apperrors.WrapRuntime("failed to create worktree parent directory", err)
@@ -39,6 +78,19 @@ func (s *Service) CreateWorktree(ctx context.Context, bareDir, mergeRef, workDir
 	}
 
 	return nil
+}
+
+func (s *Service) isValidWorktreeDir(ctx context.Context, workDir string) (bool, error) {
+	output, err := s.runner.Run(ctx, "git", "-C", workDir, "rev-parse", "--is-inside-work-tree")
+	if err != nil {
+		if strings.Contains(strings.ToLower(err.Error()), "not a git repository") {
+			return false, nil
+		}
+
+		return false, err
+	}
+
+	return strings.EqualFold(strings.TrimSpace(output), "true"), nil
 }
 
 func (s *Service) CleanupWorktree(ctx context.Context, bareDir, workDir string, opts EnsureOptions) error {
@@ -80,8 +132,7 @@ func (s *Service) ResolveWorktreeDirFromBareDir(bareDir string, prID int) (strin
 		return "", apperrors.WrapConfig("could not determine repository hash from bare mirror path", nil)
 	}
 
-	runID := strconv.FormatInt(time.Now().UTC().UnixNano(), 10)
-	return filepath.Join(defaultWorktreeCacheDir(), repoHash, "pr-"+strconv.Itoa(prID), runID), nil
+	return filepath.Join(defaultWorktreeCacheDir(), repoHash, "pr-"+strconv.Itoa(prID)), nil
 }
 
 func defaultWorktreeCacheDir() string {

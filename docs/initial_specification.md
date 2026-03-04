@@ -296,10 +296,7 @@ PRR is designed as a set of composable commands that read JSON from stdin and em
 
 These are recommended to support piping and testing, but may be implemented internally initially:
 
-- `prr resolve <PR_URL>` → emits `PRRef`
-- `prr mirror ensure` → adds `bareDir`
-- `prr prref fetch` → adds `mergeRef`
-- `prr worktree add` → adds `workDir`
+- `prr checkout <PR_URL>` → emits workspace payload including `PRRef` + `bareDir` + `mergeRef` + `workDir`
 - `prr diff` → emits diff outputs
 - `prr bundle` → emits `Bundle`
 - `prr review-engine` → emits `Review`
@@ -308,7 +305,7 @@ These are recommended to support piping and testing, but may be implemented inte
 
 All commands must also support equivalent flags (not only stdin).
 
-For `resolve`, the implementation should auto-detect provider/context from supported PR URL formats:
+For `checkout`, implementation should auto-detect provider/context from supported PR URL formats:
 
 - Azure DevOps: `https://dev.azure.com/<org>/<project>/_git/<repo>/pullrequest/<id>`
 - GitHub: `https://github.com/<owner>/<repo>/pull/<id>`

@@ -48,6 +48,35 @@ func TestResolveMirrorDirDeterministic(t *testing.T) {
 	if !strings.HasSuffix(first, ".git") {
 		t.Fatalf("expected deterministic mirror path to end with .git, got %q", first)
 	}
+	if !strings.Contains(first, "/example-org-repo.git") {
+		t.Fatalf("expected human-readable mirror path segment, got %q", first)
+	}
+}
+
+func TestResolveMirrorDirGitHubUsesProviderOwnerRepoSlug(t *testing.T) {
+	service := NewServiceWithCacheDir(&recorderRunner{}, t.TempDir())
+
+	path, err := service.ResolveMirrorDir("https://github.com/steveyegge/beads")
+	if err != nil {
+		t.Fatalf("expected mirror dir resolution to succeed, got %v", err)
+	}
+
+	if !strings.HasSuffix(path, "/github-steveyegge-beads.git") {
+		t.Fatalf("expected github provider-project-repo naming, got %q", path)
+	}
+}
+
+func TestResolveMirrorDirAzureDevOpsUsesProviderProjectRepoSlug(t *testing.T) {
+	service := NewServiceWithCacheDir(&recorderRunner{}, t.TempDir())
+
+	path, err := service.ResolveMirrorDir("https://dev.azure.com/ensekltd/blackbird/_git/blackbird")
+	if err != nil {
+		t.Fatalf("expected mirror dir resolution to succeed, got %v", err)
+	}
+
+	if !strings.HasSuffix(path, "/azure-ensekltd-blackbird.git") {
+		t.Fatalf("expected azure provider-project-repo naming, got %q", path)
+	}
 }
 
 func TestEnsureMirrorUsesUpdateForExistingMirror(t *testing.T) {

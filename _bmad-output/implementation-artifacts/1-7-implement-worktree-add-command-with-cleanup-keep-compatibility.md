@@ -1,6 +1,6 @@
 # Story 1.7: Implement Worktree Add Command with Cleanup/Keep Compatibility
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -137,6 +137,10 @@ GPT-5.3-Codex
 - Added `internal/git` worktree lifecycle support (create, cleanup remove/prune, deterministic worktree path resolution).
 - Added command and git service tests for detached add contract, what-if no-exec behaviour, and composable pipeline interoperability.
 - Ran full regression tests via `go test ./...` and all packages passed.
+- Senior Developer Review (AI) completed in-session with findings addressed.
+- Added explicit `cleanup` intent in `worktree add` JSON output (`cleanup = !keep`) to preserve cleanup/keep compatibility in review-chain composition.
+- Added command-level validation tests for missing PR context and invalid merge-ref input.
+- Added git service cleanup tests for what-if no-exec logging and runtime error classification.
 
 ### File List
 
@@ -150,6 +154,28 @@ GPT-5.3-Codex
 - internal/git/worktree.go
 - internal/git/worktree_test.go
 
+### Senior Developer Review (AI)
+
+- Date: 2026-03-04
+- Reviewer: Richard (AI-assisted)
+- Outcome: Changes requested and fixed in-session
+
+#### Findings
+
+- High: Cleanup/keep compatibility was implicit only; the command contract did not explicitly communicate cleanup intent for chain consumers.
+- Medium: Missing command validation coverage for required PR context and malformed merge-ref paths.
+- Medium: Missing cleanup what-if and runtime classification coverage in git lifecycle tests.
+- Low: Story file list reflects implemented historical changes while current working tree is clean at review time.
+
+#### Fixes Applied
+
+- Extended `worktree add` output with `cleanup` boolean (`true` unless `--keep`) to make chain lifecycle intent explicit.
+- Added tests for default cleanup intent and `--keep` override output behaviour.
+- Added tests asserting config-class failures for missing `--pr-id/--merge-ref` and malformed merge-ref inputs.
+- Added cleanup service tests proving what-if logs remove/prune commands without execution and classifies remove failures as runtime.
+- Re-ran focused and full test suites; all tests pass.
+
 ## Change Log
 
+- 2026-03-04: Senior Developer Review (AI) completed; added explicit cleanup intent contract and expanded validation/cleanup regression coverage; status moved to `done`.
 - 2026-03-04: Implemented story 1.7 worktree add command and git lifecycle support; added composability and regression coverage; status moved to `review`.
