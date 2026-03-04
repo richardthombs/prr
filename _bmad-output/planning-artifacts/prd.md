@@ -142,8 +142,19 @@ The CLI should be structured around deterministic input-generation stages: PR re
 ### Command Structure
 
 - Primary command: `prr review <PR_ID>`.
+- MVP composable commands (must be implemented):
+  - `prr resolve <PR_ID>`
+  - `prr mirror ensure`
+  - `prr prref fetch`
+  - `prr worktree add`
+  - `prr diff`
+  - `prr bundle`
+  - `prr review-engine`
+  - `prr render`
+  - `prr publish` (optional execution path; command must exist)
 - Support explicit provider/repo context resolution (automatic where possible, overridable when needed).
 - Include `--keep` to retain worktree for inspection; default behaviour is cleanup.
+- All commands must support equivalent flags and JSON-compatible stdin/stdout contracts where applicable.
 - Use stable exit codes to distinguish user errors, provider constraints, and system/runtime failures.
 
 ### Output Formats
@@ -178,7 +189,7 @@ The CLI should be structured around deterministic input-generation stages: PR re
 
 ### MVP Strategy & Philosophy
 
-**MVP Approach:** Problem-solving MVP focused on a single reliable workflow: deterministic on-demand PR review from one command.
+**MVP Approach:** Problem-solving MVP focused on a reliable primary review workflow plus explicit composable commands for deterministic stage-by-stage execution and automation.
 **Resource Requirements:** Solo builder (Richard), with skills in CLI engineering, Git plumbing, and basic prompt/review-engine integration.
 
 ### MVP Feature Set (Phase 1)
@@ -199,6 +210,7 @@ The CLI should be structured around deterministic input-generation stages: PR re
 - Markdown default rendering + optional publish integration.
 - Configurable safety limits (patch bytes, changed files) and clear errors.
 - Cleanup by default, `--keep` override, stable exit-code semantics.
+- Explicit MVP command surface includes `review`, `resolve`, `mirror ensure`, `prref fetch`, `worktree add`, `diff`, `bundle`, `review-engine`, `render`, and `publish`.
 
 ### Post-MVP Features
 

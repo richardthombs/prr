@@ -143,7 +143,7 @@ Richard can consume Markdown/JSON outputs, optionally publish results, and integ
 
 ## Epic 1: CLI Setup, Configuration, and Review Invocation
 
-Richard can initialise PRR, run a review command with the correct PR context, and control defaults/overrides for predictable execution.
+Richard can initialise PRR, run the primary review flow, and execute MVP composable pipeline commands (`resolve`, `mirror ensure`, `prref fetch`, `worktree add`, `diff`, `bundle`, `review-engine`, `render`, `publish`) with predictable contracts and overrides.
 
 ### Story 1.1: Initialise Cobra CLI Project Skeleton
 
@@ -224,6 +224,110 @@ So that behaviour is predictable and tunable per run.
 **When** I run the command
 **Then** PRR fails fast with field-specific validation errors
 **And** returns a stable configuration error class exit code.
+
+### Story 1.5: Implement Resolve Command Contract
+
+**FRs:** FR1, FR3, FR4
+
+As Richard,
+I want `prr resolve <PR_ID>` to emit deterministic PR reference context,
+So that I can script and verify context resolution independently of the full review flow.
+
+**Acceptance Criteria:**
+
+**Given** a valid PR identifier and resolvable context
+**When** I run `prr resolve <PR_ID>`
+**Then** PRR emits a stable JSON `PRRef` payload
+**And** supports equivalent override flags.
+
+**Given** missing or invalid context inputs
+**When** resolution fails
+**Then** PRR returns actionable diagnostics
+**And** exits with a stable error-class code.
+
+### Story 1.6: Implement Mirror Ensure and PRRef Fetch Commands
+
+**FRs:** FR5, FR6, FR8, FR9
+
+As Richard,
+I want `prr mirror ensure` and `prr prref fetch` commands,
+So that mirror lifecycle and merge-ref acquisition are composable and testable.
+
+**Acceptance Criteria:**
+
+**Given** repo context input
+**When** I run `prr mirror ensure`
+**Then** PRR creates or updates the deterministic mirror location
+**And** emits JSON including `bareDir`.
+
+**Given** valid PR context and mirror state
+**When** I run `prr prref fetch`
+**Then** PRR fetches merge ref into `refs/prr/pull/<PR_ID>/merge`
+**And** emits JSON including resolved `mergeRef`.
+
+### Story 1.7: Implement Worktree Add Command with Cleanup/Keep Compatibility
+
+**FRs:** FR10, FR11, FR12, FR13
+
+As Richard,
+I want `prr worktree add` to create isolated review worktrees,
+So that workspace lifecycle can be controlled independently and safely.
+
+**Acceptance Criteria:**
+
+**Given** a valid mirror and merge ref
+**When** I run `prr worktree add`
+**Then** PRR creates a detached isolated worktree and emits `workDir`
+**And** no writes are performed in the active working copy.
+
+**Given** default cleanup behaviour and `--keep` override
+**When** this command is used in the review chain
+**Then** lifecycle behaviour remains consistent with documented cleanup semantics.
+
+### Story 1.8: Implement Diff and Bundle Composable Commands
+
+**FRs:** FR14, FR15, FR16, FR17, FR18, FR19, FR20
+
+As Richard,
+I want `prr diff` and `prr bundle` commands,
+So that deterministic review inputs can be generated and validated in composable stages.
+
+**Acceptance Criteria:**
+
+**Given** a valid worktree
+**When** I run `prr diff`
+**Then** PRR emits deterministic stat/files/patch outputs
+**And** output contracts are JSON-compatible.
+
+**Given** valid diff outputs
+**When** I run `prr bundle`
+**Then** PRR emits a validated v1 bundle payload
+**And** enforces configured size limits with explicit failure diagnostics.
+
+### Story 1.9: Implement Review-Engine, Render, and Publish Composable Commands
+
+**FRs:** FR21, FR22, FR23, FR24, FR25, FR26, FR27, FR28, FR29
+
+As Richard,
+I want `prr review-engine`, `prr render`, and `prr publish` commands,
+So that review execution, output rendering, and optional publication are composable for scripting and diagnostics.
+
+**Acceptance Criteria:**
+
+**Given** a valid review bundle
+**When** I run `prr review-engine`
+**Then** PRR emits structured review JSON with stable per-run finding references
+**And** engine failures return actionable, classed errors.
+
+**Given** a valid review JSON payload
+**When** I run `prr render`
+**Then** PRR outputs Markdown by default and JSON when requested
+**And** channel/exit behaviour remains automation-stable.
+
+**Given** publish mode and provider support
+**When** I run `prr publish`
+**Then** PRR posts rendered review output to the PR
+**And** reports publication outcome explicitly.
 
 ## Epic 2: Safe Repository Snapshot and Isolated Review Workspace
 

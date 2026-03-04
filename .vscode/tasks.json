@@ -1,0 +1,45 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "prr-build-once",
+			"type": "shell",
+			"command": "go",
+			"args": [
+				"build",
+				"./..."
+			],
+			"isBackground": false
+		},
+		{
+			"label": "prr-go-mod-tidy",
+			"type": "shell",
+			"command": "go",
+			"args": [
+				"mod",
+				"tidy"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "prr-build-verify",
+			"type": "shell",
+			"command": "go",
+			"args": [
+				"build",
+				"./..."
+			],
+			"isBackground": false
+		},
+		{
+			"label": "prr-test-verify",
+			"type": "shell",
+			"command": "go",
+			"args": [
+				"test",
+				"./..."
+			],
+			"isBackground": false
+		}
+	]
+}
