@@ -17,8 +17,8 @@ var mirrorServiceFactory = func() *git.Service {
 }
 
 type mirrorEnsureOutput struct {
-	PRID    int    `json:"prId,omitempty"`
-	RepoURL string `json:"repoUrl"`
+	PRID     int    `json:"prId,omitempty"`
+	RepoURL  string `json:"repoUrl"`
 	Remote   string `json:"remote,omitempty"`
 	Provider string `json:"provider,omitempty"`
 	BareDir  string `json:"bareDir"`
@@ -121,7 +121,7 @@ var mirrorEnsureCmd = &cobra.Command{
 		}
 
 		payload, err := json.Marshal(mirrorEnsureOutput{
-			PRID:    stdinInput.PRID,
+			PRID:     stdinInput.PRID,
 			RepoURL:  repoURL,
 			Remote:   stdinInput.Remote,
 			Provider: stdinInput.Provider,

@@ -1,6 +1,6 @@
 # Story 1.7: Implement Worktree Add Command with Cleanup/Keep Compatibility
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -19,25 +19,25 @@ so that workspace lifecycle can be controlled independently and safely.
 
 ## Tasks / Subtasks
 
-- [ ] Add `worktree add` Cobra command surface (AC: 1, 2, 3, 4)
-  - [ ] Create `cmd/prr/worktree_add.go` and register under `worktree` parent command
-  - [ ] Support equivalent flag inputs for composable use (`--bare-dir`, `--merge-ref`, `--pr-id`, `--repo`, `--keep`, `--verbose`, `--what-if`)
-  - [ ] Emit JSON to stdout only (stderr for diagnostics) with deterministic keys including `workDir`
-- [ ] Implement worktree lifecycle service in `internal/git` (AC: 1, 2)
-  - [ ] Add/create `internal/git/worktree.go` with detached create and remove/prune operations
-  - [ ] Use deterministic default path `~/.cache/prr/work/<repoHash>/pr-<PR_ID>/<runId>/`
-  - [ ] Use merge ref contract `refs/prr/pull/<PR_ID>/merge` as primary input target
-- [ ] Enforce safety and composability constraints (AC: 1, 2)
-  - [ ] Ensure implementation never writes to user active working copy paths
-  - [ ] Ensure clean up by default and explicit retention only via `--keep`
-  - [ ] Return actionable typed errors via central `internal/errors` mapping
-- [ ] Implement observability parity with prior commands (AC: 3, 4)
-  - [ ] Match `mirror ensure`/`prref fetch` pattern: `exec: ...` lines on stderr before command execution
-  - [ ] In `--what-if`, print planned git commands and skip external execution while still returning valid JSON contract
-- [ ] Add tests for command and git-layer contracts (AC: 1, 2, 3, 4)
-  - [ ] Add command tests in `cmd/prr/*_test.go` for required flags, stdout JSON shape, and stderr verbose/what-if behaviour
-  - [ ] Add git service tests in `internal/git/*_test.go` for detached add, remove/prune, and failure classification
-  - [ ] Add regression tests proving no external execution in what-if mode
+- [x] Add `worktree add` Cobra command surface (AC: 1, 2, 3, 4)
+  - [x] Create `cmd/prr/worktree_add.go` and register under `worktree` parent command
+  - [x] Support equivalent flag inputs for composable use (`--bare-dir`, `--merge-ref`, `--pr-id`, `--repo`, `--keep`, `--verbose`, `--what-if`)
+  - [x] Emit JSON to stdout only (stderr for diagnostics) with deterministic keys including `workDir`
+- [x] Implement worktree lifecycle service in `internal/git` (AC: 1, 2)
+  - [x] Add/create `internal/git/worktree.go` with detached create and remove/prune operations
+  - [x] Use deterministic default path `~/.cache/prr/work/<repoHash>/pr-<PR_ID>/<runId>/`
+  - [x] Use merge ref contract `refs/prr/pull/<PR_ID>/merge` as primary input target
+- [x] Enforce safety and composability constraints (AC: 1, 2)
+  - [x] Ensure implementation never writes to user active working copy paths
+  - [x] Ensure clean up by default and explicit retention only via `--keep`
+  - [x] Return actionable typed errors via central `internal/errors` mapping
+- [x] Implement observability parity with prior commands (AC: 3, 4)
+  - [x] Match `mirror ensure`/`prref fetch` pattern: `exec: ...` lines on stderr before command execution
+  - [x] In `--what-if`, print planned git commands and skip external execution while still returning valid JSON contract
+- [x] Add tests for command and git-layer contracts (AC: 1, 2, 3, 4)
+  - [x] Add command tests in `cmd/prr/*_test.go` for required flags, stdout JSON shape, and stderr verbose/what-if behaviour
+  - [x] Add git service tests in `internal/git/*_test.go` for detached add, remove/prune, and failure classification
+  - [x] Add regression tests proving no external execution in what-if mode
 
 ## Dev Notes
 
@@ -133,7 +133,23 @@ GPT-5.3-Codex
 - Ultimate context engine analysis completed - comprehensive developer guide created.
 - Story selected explicitly from approved change set: `1-7-implement-worktree-add-command-with-cleanup-keep-compatibility`.
 - Story context refreshed with explicit command-level guardrails, deterministic workspace path contract, and prior-story implementation intelligence.
+- Implemented `worktree add` composable command with stdin/flag input merging and deterministic detached worktree creation.
+- Added `internal/git` worktree lifecycle support (create, cleanup remove/prune, deterministic worktree path resolution).
+- Added command and git service tests for detached add contract, what-if no-exec behaviour, and composable pipeline interoperability.
+- Ran full regression tests via `go test ./...` and all packages passed.
 
 ### File List
 
 - _bmad-output/implementation-artifacts/1-7-implement-worktree-add-command-with-cleanup-keep-compatibility.md
+- cmd/prr/compose_input.go
+- cmd/prr/mirror_ensure.go
+- cmd/prr/mirror_prref_test.go
+- cmd/prr/prref_fetch.go
+- cmd/prr/worktree_add.go
+- cmd/prr/worktree_add_test.go
+- internal/git/worktree.go
+- internal/git/worktree_test.go
+
+## Change Log
+
+- 2026-03-04: Implemented story 1.7 worktree add command and git lifecycle support; added composability and regression coverage; status moved to `review`.
