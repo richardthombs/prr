@@ -45,7 +45,7 @@ development_status:
   1-2-implement-review-command-entry-and-pr-identifier-input: backlog
   1-3-add-context-resolution-and-explicit-override-controls: backlog
   1-4-implement-config-loading-validation-and-precedence: backlog
-  1-5-implement-resolve-command-contract: ready-for-dev
+  1-5-implement-resolve-command-contract: review
   1-6-implement-mirror-ensure-and-prref-fetch-commands: ready-for-dev
   1-7-implement-worktree-add-command-with-cleanup-keep-compatibility: ready-for-dev
   1-8-implement-diff-and-bundle-composable-commands: ready-for-dev

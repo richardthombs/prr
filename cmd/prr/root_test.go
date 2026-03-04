@@ -12,6 +12,7 @@ func TestPlaceholderCommandsRegistered(t *testing.T) {
 	expected := map[string]bool{
 		"review":  false,
 		"publish": false,
+		"resolve": false,
 		"version": false,
 	}
 

@@ -1,6 +1,6 @@
 # Story 1.5: Implement Resolve Command Contract
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -17,22 +17,22 @@ so that I can script and verify context resolution independently of the full rev
 
 ## Tasks / Subtasks
 
-- [ ] Add `resolve` command wiring under `cmd/prr/` (AC: 1, 2)
-  - [ ] Create `cmd/prr/resolve.go` and register command with root command
-  - [ ] Accept `<PR_ID>` argument and validate argument count/type
-  - [ ] Add override flags for provider/repo/remote as required by current config model
-- [ ] Define and expose `PRRef` contract for command output (AC: 1)
-  - [ ] Implement/confirm typed structure for `prId`, `repoUrl`, `remote`, `provider`
-  - [ ] Emit deterministic JSON fields in camelCase
-- [ ] Implement resolution execution path with provider abstraction (AC: 1, 2)
-  - [ ] Call provider resolution boundary only (no direct provider-specific logic in command)
-  - [ ] Surface successful payload to stdout in automation-safe format
-- [ ] Implement structured failure path and exit mapping (AC: 2)
-  - [ ] Classify failures into documented error classes
-  - [ ] Ensure actionable user-facing diagnostics without leaking sensitive values
-- [ ] Add tests and baseline validation (AC: 1, 2)
-  - [ ] Unit tests for arg/flag validation and JSON output shape
-  - [ ] Tests for failure diagnostics and non-zero exit behaviour
+- [x] Add `resolve` command wiring under `cmd/prr/` (AC: 1, 2)
+  - [x] Create `cmd/prr/resolve.go` and register command with root command
+  - [x] Accept `<PR_ID>` argument and validate argument count/type
+  - [x] Add override flags for provider/repo/remote as required by current config model
+- [x] Define and expose `PRRef` contract for command output (AC: 1)
+  - [x] Implement/confirm typed structure for `prId`, `repoUrl`, `remote`, `provider`
+  - [x] Emit deterministic JSON fields in camelCase
+- [x] Implement resolution execution path with provider abstraction (AC: 1, 2)
+  - [x] Call provider resolution boundary only (no direct provider-specific logic in command)
+  - [x] Surface successful payload to stdout in automation-safe format
+- [x] Implement structured failure path and exit mapping (AC: 2)
+  - [x] Classify failures into documented error classes
+  - [x] Ensure actionable user-facing diagnostics without leaking sensitive values
+- [x] Add tests and baseline validation (AC: 1, 2)
+  - [x] Unit tests for arg/flag validation and JSON output shape
+  - [x] Tests for failure diagnostics and non-zero exit behaviour
 
 ## Dev Notes
 
@@ -106,7 +106,28 @@ GPT-5.3-Codex
 
 - Ultimate context engine analysis completed - comprehensive developer guide created.
 - Story selected explicitly from approved change set: `1-5-implement-resolve-command-contract`.
+- Implemented `prr resolve <PR_ID>` command wiring with `--provider`, `--repo`, and `--remote` overrides and deterministic `PRRef` JSON output.
+- Added internal boundaries for config resolution, provider abstraction/delegation, `PRRef` contract typing, and centralised error-class to exit-code mapping.
+- Added command and internal unit tests covering argument validation, output contract, failure diagnostics, and stable non-zero exit code mapping.
+- Validation run completed with successful `go test ./...`.
 
 ### File List
 
 - _bmad-output/implementation-artifacts/1-5-implement-resolve-command-contract.md
+- cmd/prr/main.go
+- cmd/prr/resolve.go
+- cmd/prr/resolve_test.go
+- cmd/prr/root_test.go
+- internal/config/resolve.go
+- internal/config/resolve_test.go
+- internal/errors/errors.go
+- internal/errors/errors_test.go
+- internal/provider/default_provider.go
+- internal/provider/provider.go
+- internal/provider/resolver.go
+- internal/provider/resolver_test.go
+- internal/types/prref.go
+
+### Change Log
+
+- 2026-03-04: Implemented Story 1.5 resolve command contract, typed PRRef output, provider/config boundary delegation, centralised error/exit mapping, and baseline test coverage.
