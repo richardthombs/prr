@@ -250,7 +250,7 @@ The review engine produces a structured JSON review.
 
 ### Finding identity
 
-The `findings[].id` must be stable for identical findings across reruns. A deterministic hash over (file, line, category, message) is acceptable.
+The `findings[].id` is a per-review reference identifier. It does not need to be stable across reruns of the same PR.
 
 ---
 

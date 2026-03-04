@@ -127,7 +127,7 @@ Fast iteration with `go test`, `go run`, predictable binary packaging, straightf
 ### Decision Priority Analysis
 
 **Critical Decisions (Block Implementation):**
-- Local persistence model for run metadata and stable finding identity support.
+- State model limited to repository mirrors and detached worktrees only (no metadata database).
 - Configuration hierarchy and validation contract.
 - Provider/review-engine interface boundaries.
 - Error taxonomy and exit-code contract.
@@ -139,14 +139,14 @@ Fast iteration with `go test`, `go run`, predictable binary packaging, straightf
 - CI quality gates and test layers.
 
 **Deferred Decisions (Post-MVP):**
-- Distributed cache/backing store.
+- Optional metadata persistence layer (only if future requirements demand it).
 - Multi-engine orchestration.
 - Team-scale policy/profile management.
 
 ### Data Architecture
 
-- **Primary store:** Local SQLite for run metadata, publish state, and optional finding-history mappings.
-- **Schema management:** SQL migration files under version control.
+- **Primary state:** Filesystem-based Git mirror/worktree cache only.
+- **Metadata model:** Stateless execution; no application database for run history or publish state.
 - **Validation boundary:** Strict schema validation for inbound/outbound bundle/review payloads.
 - **Caching:** Filesystem-based Git mirror/worktree cache as first-class operational storage.
 
@@ -163,7 +163,7 @@ Fast iteration with `go test`, `go run`, predictable binary packaging, straightf
 - **Provider abstraction:** `PRProvider` boundary for resolve + publish.
 - **Review engine abstraction:** `ReviewEngine` boundary for bundle-in / review-out.
 - **Error contract:** Typed error classes mapped to stable non-zero exit codes.
-- **I/O contract:** Markdown default, JSON mode for automation, deterministic stdout/stderr semantics.
+- **I/O contract:** Markdown default, JSON mode for automation, stable stdout/stderr channeling and schema semantics.
 
 ### Frontend Architecture
 
@@ -174,7 +174,7 @@ Not applicable (CLI product). Output rendering uses Markdown formatter + JSON se
 - **Build/release:** Single static CLI binary distribution per target OS/arch.
 - **CI baseline:** lint + unit tests + integration tests (Git/provider contract focus) + smoke CLI run.
 - **Runtime target:** Local developer machine execution (no mandatory hosted runtime for MVP).
-- **Monitoring/diagnostics:** Stage-level event logs and debug mode with correlation/run IDs.
+- **Monitoring/diagnostics:** Stage-level event logs and debug mode with per-run trace IDs.
 
 ### Decision Impact Analysis
 
@@ -188,7 +188,7 @@ Not applicable (CLI product). Output rendering uses Markdown formatter + JSON se
 **Cross-Component Dependencies:**
 - Error taxonomy affects all command handlers and renderer outputs.
 - Config model affects provider, engine, and safety-limit enforcement.
-- Persistence choice influences finding stability and rerun behaviour.
+- Review-output variability is accepted; only review-input generation is required to be deterministic.
 - Logging/redaction policy applies across all stage executors.
 
 ## Implementation Patterns & Consistency Rules
@@ -200,12 +200,11 @@ Not applicable (CLI product). Output rendering uses Markdown formatter + JSON se
 
 ### Naming Patterns
 
-**Database Naming Conventions:**
-- Tables: `snake_case` plural (`review_runs`, `findings`, `publish_events`)
-- Columns: `snake_case` (`run_id`, `provider_name`, `created_at`)
-- Primary keys: `id` (INTEGER)
-- Foreign keys: `<referenced_table_singular>_id` (`run_id`)
-- Indexes: `idx_<table>_<column_list>` (`idx_findings_run_id`)
+**Filesystem State Naming Conventions:**
+- Mirror paths: deterministic repo-hash directories (`~/.cache/prr/repos/<repoHash>.git`)
+- Worktree paths: scoped by repo hash + PR + run id (`~/.cache/prr/work/<repoHash>/pr-<PR_ID>/<runId>/`)
+- Internal refs: `refs/prr/pull/<PR_ID>/merge`
+- Lock files: one lock per repo hash adjacent to mirror path
 
 **API Naming Conventions:**
 - Internal JSON contracts: `camelCase` for bundle/review payloads exposed to external engines.
@@ -234,7 +233,6 @@ Not applicable (CLI product). Output rendering uses Markdown formatter + JSON se
   - defaults in code
   - optional user config file under standard OS config dir
   - env + flags override precedence
-- SQL migrations in `internal/store/migrations/`
 - Docs in `docs/`, architecture/planning artifacts in `_bmad-output/planning-artifacts/`
 
 ### Format Patterns
@@ -248,8 +246,7 @@ Not applicable (CLI product). Output rendering uses Markdown formatter + JSON se
 **Data Exchange Formats:**
 - External bundle/review JSON fields remain `camelCase` to match PRD structures.
 - Timestamps:
-  - persisted as UTC ISO-8601 strings where serialized
-  - database timestamps normalized to UTC
+  - serialized as UTC ISO-8601 strings where emitted in JSON/log output
 - Nulls: explicit `null` in JSON; avoid sentinel values.
 
 ### Communication Patterns
@@ -297,7 +294,7 @@ Not applicable (CLI product). Output rendering uses Markdown formatter + JSON se
 **Good Examples:**
 - CLI flag: `--max-patch-bytes`
 - Env var: `PRR_MAX_PATCH_BYTES`
-- DB index: `idx_review_runs_pr_id`
+- Worktree path: `~/.cache/prr/work/<repoHash>/pr-12345/<runId>/`
 - Event: `stage.bundle.completed`
 - Error code: `PROVIDER_MERGE_REF_MISSING`
 
@@ -369,12 +366,6 @@ prr/
 │   │   └── sections.go
 │   ├── publish/
 │   │   └── publish.go
-│   ├── store/
-│   │   ├── store.go
-│   │   ├── sqlite.go
-│   │   └── migrations/
-│   │       ├── 0001_init.sql
-│   │       └── 0002_findings.sql
 │   ├── errors/
 │   │   ├── codes.go
 │   │   ├── classify.go
@@ -423,12 +414,12 @@ prr/
 **Service Boundaries:**
 - `provider` and `engine` communicate via typed contracts in `internal/types`.
 - `publish` uses provider abstraction, never bypasses it.
-- `store` is optional runtime dependency for metadata/history, not required for core diff generation.
+- No runtime metadata store is required for MVP; state remains in mirrors/worktrees only.
 
 **Data Boundaries:**
 - External contracts: `camelCase` JSON payloads.
-- Internal persistence: SQLite schema managed under `internal/store/migrations`.
-- Secrets never written to store/log sinks.
+- Internal state: mirror/worktree filesystem artifacts only.
+- Secrets never written to logs, output payloads, or temporary artifacts.
 
 ### Requirements to Structure Mapping
 
@@ -496,13 +487,13 @@ prr/
 ### Coherence Validation ✅
 
 **Decision Compatibility:**
-Core decisions are compatible: Go + Cobra command model, staged pipeline orchestration, provider/review-engine abstractions, SQLite metadata layer, and centralized error/logging contracts all align without architectural contradiction.
+Core decisions are compatible: Go + Cobra command model, staged pipeline orchestration, provider/review-engine abstractions, filesystem state model (mirrors/worktrees only), and centralized error/logging contracts all align without architectural contradiction.
 
 **Pattern Consistency:**
 Naming, structure, communication, and process patterns reinforce the architecture choices and reduce agent-level variance (especially around error contracts, JSON boundaries, and stage events).
 
 **Structure Alignment:**
-The project tree supports all major decisions, with clear boundaries for `cmd`, orchestration, adapters, persistence, rendering, and cross-cutting concerns.
+The project tree supports all major decisions, with clear boundaries for `cmd`, orchestration, adapters, filesystem state handling, rendering, and cross-cutting concerns.
 
 ### Requirements Coverage Validation ✅
 
@@ -518,7 +509,7 @@ All FR groups are architecturally mapped:
 - output/publish/automation → render/publish/cmd/logging
 
 **Non-Functional Requirements Coverage:**
-- Determinism: explicit staged contracts, typed boundaries
+- Determinism: explicit staged contracts for review-input generation, typed boundaries
 - Security: redaction + secret-handling policy
 - Reliability: stable exit code taxonomy + lifecycle ownership
 - Integration: machine-readable JSON contracts + output conventions
@@ -586,7 +577,7 @@ Conflict-prone areas (naming, errors, events, flags/env/config precedence) are c
 
 **Key Strengths:**
 - Strong boundary clarity for multi-agent implementation
-- Deterministic pipeline-first design aligned with PRD intent
+- Deterministic review-input pipeline aligned with PRD intent
 - Explicit cross-cutting standards for errors/logging/config
 
 **Areas for Future Enhancement:**

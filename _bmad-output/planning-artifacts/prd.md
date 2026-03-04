@@ -82,7 +82,7 @@ This project is intentionally personal and non-commercial: success is measured b
 ### MVP - Minimum Viable Product
 
 - `prr review PR_ID` flow with provider resolution, mirror/worktree management, deterministic diff, v1 bundle, review engine invocation, Markdown rendering, optional publish, cleanup/`--keep`.
-- Configurable patch/file safety limits and stable finding IDs.
+- Configurable patch/file safety limits.
 - Support providers where merge ref is available (with clear error otherwise).
 
 ### Growth Features (Post-MVP)
@@ -133,11 +133,11 @@ Richard scripts PRR in a shell pipeline using JSON-friendly inputs/outputs. A wr
 
 ### Project-Type Overview
 
-PRR is a script-friendly CLI for deterministic, on-demand PR review execution. The command surface prioritises single-command interactive use while remaining composable for automation workflows. The tool behaves predictably across repeated runs and provides explicit, machine-parsable failure behaviour for integration scenarios.
+PRR is a script-friendly CLI for deterministic review-input generation and on-demand PR review execution. The command surface prioritises single-command interactive use while remaining composable for automation workflows. The tool behaves predictably across repeated runs for input preparation and provides explicit, machine-parsable failure behaviour for integration scenarios.
 
 ### Technical Architecture Considerations
 
-The CLI should be structured around a pipeline of deterministic stages: PR resolution, mirror/worktree preparation, diff generation, review bundle construction, review engine invocation, rendering, optional publication, and cleanup. Each stage should expose clear error boundaries and stable contracts to support troubleshooting and scripting. Command execution must preserve local repository isolation and enforce configurable safety limits before review engine invocation.
+The CLI should be structured around deterministic input-generation stages: PR resolution, mirror/worktree preparation, diff generation, and review bundle construction, followed by review engine invocation, rendering, optional publication, and cleanup. Review-engine output content is expected to vary between invocations. Each stage should expose clear error boundaries and stable contracts to support troubleshooting and scripting. Command execution must preserve local repository isolation and enforce configurable safety limits before review engine invocation.
 
 ### Command Structure
 
@@ -163,7 +163,7 @@ The CLI should be structured around a pipeline of deterministic stages: PR resol
 ### Scripting Support
 
 - JSON in/out compatibility for chaining with shell tools and CI scripts.
-- Deterministic run behaviour across identical inputs.
+- Deterministic review-input generation across identical source refs.
 - Non-zero exit codes and explicit failure metadata for robust automation.
 - Idempotent operational side effects where feasible (safe retries after transient failures).
 
@@ -260,7 +260,7 @@ The CLI should be structured around a pipeline of deterministic stages: PR resol
 
 - FR21: PRR can submit the generated review bundle to a configured review engine.
 - FR22: PRR can receive structured review output containing summary, risk, findings, and checklist.
-- FR23: PRR can assign stable identities to equivalent findings across reruns.
+- FR23: PRR can include finding identifiers for references within a single review result, with no requirement to correlate findings across reruns.
 - FR24: PRR can surface review-engine failures with actionable error context.
 
 ### Output, Publication & Automation
