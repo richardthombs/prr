@@ -28,6 +28,14 @@ PRR is a CLI tool that automates pull request review from a single command by cr
 - `prr resolve https://github.com/<owner>/<repo>/pull/<id>`
   Auto-detect GitHub provider context.
 
+- `prr mirror ensure --repo <repoUrl> [--verbose] [--lock-timeout <duration>] [--force] [--what-if]`
+  Create or update the deterministic bare mirror cache and emit JSON including `bareDir`.
+  Use `--verbose` for stage and pre-execution command logs, `--lock-timeout` to fail fast if another run holds the lock, `--force` to bypass lock acquisition, and `--what-if` to print commands without executing them.
+  During long-running git operations (for example clone/fetch/worktree), git progress output is streamed to stderr.
+
+- `prr prref fetch --pr-id <id> --repo <repoUrl>`
+  Fetch `pull/<id>/merge` into `refs/prr/pull/<id>/merge` and emit JSON including `mergeRef`.
+
 - `prr review <PR_ID> --max-patch-bytes <bytes> --max-files <count>`  
   Override safety limits for patch size and changed file count.
 

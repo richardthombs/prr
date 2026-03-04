@@ -1,6 +1,6 @@
 # Story 1.6: Implement Mirror Ensure and PRRef Fetch Commands
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -17,24 +17,24 @@ so that mirror lifecycle and merge-ref acquisition are composable and testable.
 
 ## Tasks / Subtasks
 
-- [ ] Add `mirror ensure` and `prref fetch` command wiring (AC: 1, 2)
-  - [ ] Add `cmd/prr/mirror_ensure.go`
-  - [ ] Add `cmd/prr/prref_fetch.go`
-  - [ ] Register commands and required flags/input handling
-- [ ] Implement mirror ensure command path (AC: 1)
-  - [ ] Ensure deterministic bare mirror path creation/reuse
-  - [ ] Update mirror state before returning success payload
-  - [ ] Return JSON payload containing `bareDir`
-- [ ] Implement PR merge ref fetch command path (AC: 2)
-  - [ ] Fetch provider merge ref into `refs/prr/pull/<PR_ID>/merge`
-  - [ ] Return JSON payload containing `mergeRef` and relevant context
-- [ ] Preserve concurrency and safety boundaries (AC: 1, 2)
-  - [ ] Use lock-safe mirror update path (no ad-hoc locking in command handler)
-  - [ ] Ensure clear behaviour on missing merge ref/provider constraints
-- [ ] Add tests and diagnostics checks (AC: 1, 2)
-  - [ ] Unit tests for command input/flag handling
-  - [ ] Integration-focused tests for mirror path and fetch ref destination
-  - [ ] Error classification tests for provider/ref failures
+- [x] Add `mirror ensure` and `prref fetch` command wiring (AC: 1, 2)
+  - [x] Add `cmd/prr/mirror_ensure.go`
+  - [x] Add `cmd/prr/prref_fetch.go`
+  - [x] Register commands and required flags/input handling
+- [x] Implement mirror ensure command path (AC: 1)
+  - [x] Ensure deterministic bare mirror path creation/reuse
+  - [x] Update mirror state before returning success payload
+  - [x] Return JSON payload containing `bareDir`
+- [x] Implement PR merge ref fetch command path (AC: 2)
+  - [x] Fetch provider merge ref into `refs/prr/pull/<PR_ID>/merge`
+  - [x] Return JSON payload containing `mergeRef` and relevant context
+- [x] Preserve concurrency and safety boundaries (AC: 1, 2)
+  - [x] Use lock-safe mirror update path (no ad-hoc locking in command handler)
+  - [x] Ensure clear behaviour on missing merge ref/provider constraints
+- [x] Add tests and diagnostics checks (AC: 1, 2)
+  - [x] Unit tests for command input/flag handling
+  - [x] Integration-focused tests for mirror path and fetch ref destination
+  - [x] Error classification tests for provider/ref failures
 
 ## Dev Notes
 
@@ -107,7 +107,21 @@ GPT-5.3-Codex
 
 - Ultimate context engine analysis completed - comprehensive developer guide created.
 - Story selected explicitly from approved change set: `1-6-implement-mirror-ensure-and-prref-fetch-commands`.
+- Added `prr mirror ensure` and `prr prref fetch` command surfaces with required flag handling and JSON output payloads.
+- Implemented `internal/git` service for deterministic mirror paths, lock-safe mirror update/create behaviour, and merge-ref fetch to `refs/prr/pull/<PR_ID>/merge`.
+- Added command-level and git-service tests covering wiring, deterministic path contract, fetch destination contract, and provider-classified fetch failure handling.
 
 ### File List
 
+- README.md
+- cmd/prr/mirror_ensure.go
+- cmd/prr/prref_fetch.go
+- cmd/prr/mirror_prref_test.go
+- internal/git/git.go
+- internal/git/mirror.go
+- internal/git/mirror_test.go
 - _bmad-output/implementation-artifacts/1-6-implement-mirror-ensure-and-prref-fetch-commands.md
+
+## Change Log
+
+- 2026-03-04: Implemented Story 1.6 command wiring and internal git mirror/fetch abstractions with tests; status moved to `review`.

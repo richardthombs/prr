@@ -14,6 +14,8 @@ so that workspace lifecycle can be controlled independently and safely.
 
 1. Given a valid mirror and merge ref, when I run `prr worktree add`, then PRR creates a detached isolated worktree and emits `workDir`, and no writes are performed in the active working copy.
 2. Given default cleanup behaviour and `--keep` override, when this command is used in the review chain, then lifecycle behaviour remains consistent with documented cleanup semantics.
+3. Given `--verbose` is enabled, when `prr worktree add` invokes external commands, then PRR logs each command to stderr before execution.
+4. Given `--what-if` is enabled, when `prr worktree add` runs, then PRR prints external commands it would execute and does not execute them.
 
 ## Tasks / Subtasks
 
@@ -32,6 +34,10 @@ so that workspace lifecycle can be controlled independently and safely.
 - [ ] Add tests for workspace and keep/cleanup behaviour (AC: 1, 2)
   - [ ] Unit tests for command argument and payload validation
   - [ ] Integration tests for worktree creation path and lifecycle handling
+- [ ] Add command observability and dry-run behaviour (AC: 3, 4)
+  - [ ] Add `--verbose` command logging for all external commands before execution
+  - [ ] Add `--what-if` mode that prints commands without executing
+  - [ ] Add tests covering verbose logging and what-if no-execution guarantees
 
 ## Dev Notes
 
@@ -44,6 +50,8 @@ so that workspace lifecycle can be controlled independently and safely.
 - Command signature: `prr worktree add`.
 - Worktree must be detached and created from merge ref under mirror context.
 - Must support compatibility with default cleanup and `--keep` retention behaviour.
+- Must support `--verbose` pre-execution command logging for external commands.
+- Must support `--what-if` dry-run mode that prints external commands and performs no external mutations.
 
 ### Architecture Compliance
 

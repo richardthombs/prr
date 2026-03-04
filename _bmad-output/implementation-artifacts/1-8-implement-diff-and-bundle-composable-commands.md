@@ -14,6 +14,8 @@ so that deterministic review inputs can be generated and validated in composable
 
 1. Given a valid worktree, when I run `prr diff`, then PRR emits deterministic stat/files/patch outputs, and output contracts are JSON-compatible.
 2. Given valid diff outputs, when I run `prr bundle`, then PRR emits a validated v1 bundle payload, and enforces configured size limits with explicit failure diagnostics.
+3. Given `--verbose` is enabled on `prr diff` and `prr bundle`, when external commands are invoked, then PRR logs each command to stderr before execution.
+4. Given `--what-if` is enabled, when `prr diff` or `prr bundle` runs, then PRR prints external commands it would execute and does not execute them.
 
 ## Tasks / Subtasks
 
@@ -34,6 +36,10 @@ so that deterministic review inputs can be generated and validated in composable
   - [ ] Unit tests for diff and bundle payload shape
   - [ ] Tests for limit exceeded failure behaviour
   - [ ] Regression tests for deterministic behaviour on unchanged refs
+- [ ] Add command observability and dry-run behaviour (AC: 3, 4)
+  - [ ] Add `--verbose` command logging for all external commands before execution
+  - [ ] Add `--what-if` mode that prints commands without executing
+  - [ ] Add tests covering verbose logging and what-if no-execution guarantees
 
 ## Dev Notes
 
@@ -49,6 +55,8 @@ so that deterministic review inputs can be generated and validated in composable
 - Diff semantics must reflect merge-parent range behaviour.
 - Bundle must include required v1 fields and pass schema validation.
 - Size limits must be configurable and enforced before engine invocation.
+- Commands must support `--verbose` pre-execution logging for any external command they run.
+- Commands must support `--what-if` dry-run mode that prints external commands and performs no external mutations.
 
 ### Architecture Compliance
 

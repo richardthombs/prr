@@ -265,6 +265,16 @@ So that mirror lifecycle and merge-ref acquisition are composable and testable.
 **Then** PRR fetches merge ref into `refs/prr/pull/<PR_ID>/merge`
 **And** emits JSON including resolved `mergeRef`.
 
+**Given** `--verbose` is enabled
+**When** these commands invoke external commands
+**Then** PRR logs each external command to stderr before execution
+**And** preserves JSON payloads on stdout.
+
+**Given** `--what-if` is enabled
+**When** these commands run
+**Then** PRR prints external commands it would execute
+**And** performs no external command execution.
+
 ### Story 1.7: Implement Worktree Add Command with Cleanup/Keep Compatibility
 
 **FRs:** FR10, FR11, FR12, FR13
@@ -283,6 +293,15 @@ So that workspace lifecycle can be controlled independently and safely.
 **Given** default cleanup behaviour and `--keep` override
 **When** this command is used in the review chain
 **Then** lifecycle behaviour remains consistent with documented cleanup semantics.
+
+**Given** `--verbose` is enabled
+**When** `prr worktree add` invokes external commands
+**Then** PRR logs each external command to stderr before execution.
+
+**Given** `--what-if` is enabled
+**When** `prr worktree add` runs
+**Then** PRR prints external commands it would execute
+**And** performs no external command execution.
 
 ### Story 1.8: Implement Diff and Bundle Composable Commands
 
@@ -303,6 +322,15 @@ So that deterministic review inputs can be generated and validated in composable
 **When** I run `prr bundle`
 **Then** PRR emits a validated v1 bundle payload
 **And** enforces configured size limits with explicit failure diagnostics.
+
+**Given** `--verbose` is enabled
+**When** `prr diff` or `prr bundle` invokes external commands
+**Then** PRR logs each external command to stderr before execution.
+
+**Given** `--what-if` is enabled
+**When** `prr diff` or `prr bundle` runs
+**Then** PRR prints external commands it would execute
+**And** performs no external command execution.
 
 ### Story 1.9: Implement Review-Engine, Render, and Publish Composable Commands
 
@@ -329,6 +357,15 @@ So that review execution, output rendering, and optional publication are composa
 **Then** PRR posts rendered review output to the PR
 **And** reports publication outcome explicitly.
 
+**Given** `--verbose` is enabled
+**When** these commands invoke external commands
+**Then** PRR logs each external command to stderr before execution.
+
+**Given** `--what-if` is enabled
+**When** these commands run
+**Then** PRR prints external commands it would execute
+**And** performs no external command execution.
+
 ## Epic 2: Safe Repository Snapshot and Isolated Review Workspace
 
 Richard can run reviews against an isolated merge snapshot with mirror/worktree lifecycle safety and zero interference with active local work.
@@ -353,6 +390,15 @@ So that repeated reviews are faster and consistent.
 **Then** PRR updates mirror state before processing
 **And** update failures produce actionable diagnostics.
 
+**Given** verbose mode is enabled
+**When** mirror lifecycle commands invoke external commands
+**Then** PRR logs each external command to stderr before execution.
+
+**Given** what-if mode is enabled
+**When** mirror lifecycle commands run
+**Then** PRR prints external commands it would execute
+**And** performs no external command execution.
+
 ### Story 2.2: Add Lock-Safe Mirror Updates for Concurrent Runs
 
 **FRs:** FR7
@@ -373,6 +419,11 @@ So that mirror state is not corrupted under parallel execution.
 **Then** progress diagnostics indicate lock wait status
 **And** timeout or failure is reported with a clear runtime error class.
 
+**Given** force mode is enabled
+**When** lock contention exists
+**Then** PRR can bypass lock acquisition
+**And** diagnostics indicate lock bypass explicitly.
+
 ### Story 2.3: Fetch Provider Merge Snapshot with Explicit Missing-Ref Handling
 
 **FRs:** FR8, FR9
@@ -392,6 +443,15 @@ So that diff generation uses deterministic merge semantics.
 **When** fetch is attempted
 **Then** PRR fails fast with an explicit actionable message
 **And** returns the provider/ref error class exit code.
+
+**Given** verbose mode is enabled
+**When** merge-ref fetch invokes external commands
+**Then** PRR logs each external command to stderr before execution.
+
+**Given** what-if mode is enabled
+**When** merge-ref fetch runs
+**Then** PRR prints external commands it would execute
+**And** performs no external command execution.
 
 ### Story 2.4: Create Isolated Detached Worktree and Enforce Cleanup/Keep Behaviour
 
@@ -417,6 +477,15 @@ So that my active local working copy remains untouched.
 **When** review processing completes
 **Then** the run worktree is retained for investigation
 **And** the retained path is printed for user access.
+
+**Given** verbose mode is enabled
+**When** worktree lifecycle invokes external commands
+**Then** PRR logs each external command to stderr before execution.
+
+**Given** what-if mode is enabled
+**When** worktree lifecycle runs
+**Then** PRR prints external commands it would execute
+**And** performs no external command execution.
 
 ## Epic 3: Deterministic Diff and Bundle Preparation with Safety Gates
 

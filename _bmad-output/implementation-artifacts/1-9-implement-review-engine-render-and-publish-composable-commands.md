@@ -15,6 +15,8 @@ so that review execution, output rendering, and optional publication are composa
 1. Given a valid review bundle, when I run `prr review-engine`, then PRR emits structured review JSON with stable per-run finding references, and engine failures return actionable, classed errors.
 2. Given a valid review JSON payload, when I run `prr render`, then PRR outputs Markdown by default and JSON when requested, and channel/exit behaviour remains automation-stable.
 3. Given publish mode and provider support, when I run `prr publish`, then PRR posts rendered review output to the PR, and reports publication outcome explicitly.
+4. Given `--verbose` is enabled on these commands, when external commands are invoked, then PRR logs each command to stderr before execution.
+5. Given `--what-if` is enabled, when these commands run, then PRR prints external commands it would execute and does not execute them.
 
 ## Tasks / Subtasks
 
@@ -37,6 +39,10 @@ so that review execution, output rendering, and optional publication are composa
   - [ ] Unit tests for command modes and payload validation
   - [ ] Tests for review normalisation and finding-id presence
   - [ ] Tests for publish optional path and diagnostics
+- [ ] Add command observability and dry-run behaviour (AC: 4, 5)
+  - [ ] Add `--verbose` command logging for all external commands before execution
+  - [ ] Add `--what-if` mode that prints commands without executing
+  - [ ] Add tests covering verbose logging and what-if no-execution guarantees
 
 ## Dev Notes
 
@@ -53,6 +59,8 @@ so that review execution, output rendering, and optional publication are composa
 - Structured review output must include summary/risk/findings/checklist fields.
 - Rendering must support Markdown default and JSON mode.
 - Publish remains optional execution path but command must exist and report explicit status.
+- Commands must support `--verbose` pre-execution logging for any external commands they run.
+- Commands must support `--what-if` dry-run mode that prints external commands and performs no external mutations.
 
 ### Architecture Compliance
 
