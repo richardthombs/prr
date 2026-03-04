@@ -11,7 +11,7 @@ The current PRD/Epics/Architecture represent composable pipeline stages primaril
 
 ### Evidence
 - Source spec explicitly recommends these composable commands for v1 command model support:
-  - `prr resolve <PR_ID>`
+  - `prr resolve <PR_URL>`
   - `prr mirror ensure`
   - `prr prref fetch`
   - `prr worktree add`
@@ -70,7 +70,7 @@ OLD:
 NEW:
 - Primary command: `prr review <PR_ID>`.
 - MVP composable commands (must be implemented):
-  - `prr resolve <PR_ID>`
+  - `prr resolve <PR_URL>`
   - `prr mirror ensure`
   - `prr prref fetch`
   - `prr worktree add`
@@ -126,7 +126,7 @@ Rationale: Makes command model explicit in the epic objective.
 #### 2. Add new stories in Epic 1
 
 NEW STORIES:
-- **Story 1.5:** Implement `prr resolve <PR_ID>` command contract.
+- **Story 1.5:** Implement `prr resolve <PR_URL>` command contract.
 - **Story 1.6:** Implement `prr mirror ensure` and `prr prref fetch` commands.
 - **Story 1.7:** Implement `prr worktree add` and cleanup/keep compatibility hooks.
 - **Story 1.8:** Implement `prr diff` and `prr bundle` commands with JSON outputs.

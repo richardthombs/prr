@@ -143,7 +143,7 @@ The CLI should be structured around deterministic input-generation stages: PR re
 
 - Primary command: `prr review <PR_ID>`.
 - MVP composable commands (must be implemented):
-  - `prr resolve <PR_ID>`
+  - `prr resolve <PR_URL>`
   - `prr mirror ensure`
   - `prr prref fetch`
   - `prr worktree add`

@@ -7,19 +7,19 @@ Status: review
 ## Story
 
 As Richard,
-I want `prr resolve <PR_ID>` to emit deterministic PR reference context,
+I want `prr resolve <PR_URL>` to emit deterministic PR reference context,
 so that I can script and verify context resolution independently of the full review flow.
 
 ## Acceptance Criteria
 
-1. Given a valid PR identifier and resolvable context, when I run `prr resolve <PR_ID>`, then PRR emits a stable JSON `PRRef` payload, and supports equivalent override flags.
+1. Given a valid PR URL and resolvable context, when I run `prr resolve <PR_URL>`, then PRR emits a stable JSON `PRRef` payload, supports equivalent override flags, and auto-detects provider for supported URL formats.
 2. Given missing or invalid context inputs, when resolution fails, then PRR returns actionable diagnostics, and exits with a stable error-class code.
 
 ## Tasks / Subtasks
 
 - [x] Add `resolve` command wiring under `cmd/prr/` (AC: 1, 2)
   - [x] Create `cmd/prr/resolve.go` and register command with root command
-  - [x] Accept `<PR_ID>` argument and validate argument count/type
+  - [x] Accept `<PR_URL>` argument and validate argument count/type
   - [x] Add override flags for provider/repo/remote as required by current config model
 - [x] Define and expose `PRRef` contract for command output (AC: 1)
   - [x] Implement/confirm typed structure for `prId`, `repoUrl`, `remote`, `provider`
@@ -43,10 +43,11 @@ so that I can script and verify context resolution independently of the full rev
 
 ### Technical Requirements
 
-- Command signature: `prr resolve <PR_ID>`.
+- Command signature: `prr resolve <PR_URL>`.
 - Support equivalent flags and automation-friendly IO conventions.
 - JSON contract must follow camelCase field naming.
 - Keep provider logic behind `PRProvider` boundary.
+- Auto-detect provider and PR context from supported PR URL formats (Azure DevOps and GitHub).
 
 ### Architecture Compliance
 
@@ -106,9 +107,10 @@ GPT-5.3-Codex
 
 - Ultimate context engine analysis completed - comprehensive developer guide created.
 - Story selected explicitly from approved change set: `1-5-implement-resolve-command-contract`.
-- Implemented `prr resolve <PR_ID>` command wiring with `--provider`, `--repo`, and `--remote` overrides and deterministic `PRRef` JSON output.
+- Implemented `prr resolve <PR_URL>` command wiring with `--provider`, `--repo`, and `--remote` overrides and deterministic `PRRef` JSON output.
 - Added internal boundaries for config resolution, provider abstraction/delegation, `PRRef` contract typing, and centralised error-class to exit-code mapping.
 - Added command and internal unit tests covering argument validation, output contract, failure diagnostics, and stable non-zero exit code mapping.
+- Added PR URL decomposition for Azure DevOps and GitHub provider URL formats with provider auto-detection.
 - Validation run completed with successful `go test ./...`.
 
 ### File List
@@ -131,3 +133,4 @@ GPT-5.3-Codex
 ### Change Log
 
 - 2026-03-04: Implemented Story 1.5 resolve command contract, typed PRRef output, provider/config boundary delegation, centralised error/exit mapping, and baseline test coverage.
+- 2026-03-04: Updated resolve command specification to PR URL input with provider auto-detection (Azure DevOps and GitHub).

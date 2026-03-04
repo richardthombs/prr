@@ -230,15 +230,15 @@ So that behaviour is predictable and tunable per run.
 **FRs:** FR1, FR3, FR4
 
 As Richard,
-I want `prr resolve <PR_ID>` to emit deterministic PR reference context,
+I want `prr resolve <PR_URL>` to emit deterministic PR reference context,
 So that I can script and verify context resolution independently of the full review flow.
 
 **Acceptance Criteria:**
 
-**Given** a valid PR identifier and resolvable context
-**When** I run `prr resolve <PR_ID>`
+**Given** a valid PR URL and resolvable context
+**When** I run `prr resolve <PR_URL>`
 **Then** PRR emits a stable JSON `PRRef` payload
-**And** supports equivalent override flags.
+**And** supports equivalent override flags and provider auto-detection for supported URL formats.
 
 **Given** missing or invalid context inputs
 **When** resolution fails
