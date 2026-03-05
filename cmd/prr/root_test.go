@@ -15,10 +15,10 @@ func TestRootCommandMetadata(t *testing.T) {
 func TestPlaceholderCommandsRegistered(t *testing.T) {
 	expected := map[string]bool{
 		"checkout": false,
-		"render":  false,
-		"review":  false,
-		"publish": false,
-		"version": false,
+		"render":   false,
+		"review":   false,
+		"publish":  false,
+		"version":  false,
 	}
 
 	for _, cmd := range rootCmd.Commands() {

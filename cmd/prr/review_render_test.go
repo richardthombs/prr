@@ -274,20 +274,24 @@ func TestReviewCommandClassifiesEngineFailures(t *testing.T) {
 func TestRenderCommandProducesDeterministicMarkdown(t *testing.T) {
 	resetRenderFlagState(t)
 
-	stdin := bytes.NewBufferString(`{"summary":"Review summary","risk":{"score":0.7,"reasons":["High churn"]},"findings":[{"id":"F002","file":"b.go","line":20,"severity":"important","category":"tests","message":"Missing tests","suggestion":"Add tests"},{"id":"F001","file":"a.go","line":10,"severity":"blocker","category":"security","message":"Input unsanitised","suggestion":"Sanitise input"}],"checklist":["Re-run CI"]}`)
-	stdout := &bytes.Buffer{}
-	stderr := &bytes.Buffer{}
+	payload := `{"summary":"Review summary","risk":{"score":0.7,"reasons":["High churn"]},"findings":[{"id":"F002","file":"b.go","line":20,"severity":"important","category":"tests","message":"Missing tests","suggestion":"Add tests"},{"id":"F001","file":"a.go","line":10,"severity":"blocker","category":"security","message":"Input unsanitised","suggestion":"Sanitise input"}],"checklist":["Re-run CI"]}`
+	renderOnce := func() (string, string, error) {
+		stdout := &bytes.Buffer{}
+		stderr := &bytes.Buffer{}
+		rootCmd.SetIn(bytes.NewBufferString(payload))
+		rootCmd.SetOut(stdout)
+		rootCmd.SetErr(stderr)
+		rootCmd.SetArgs([]string{"render"})
 
-	rootCmd.SetIn(stdin)
-	rootCmd.SetOut(stdout)
-	rootCmd.SetErr(stderr)
-	rootCmd.SetArgs([]string{"render"})
+		err := Execute()
+		return stdout.String(), stderr.String(), err
+	}
 
-	if err := Execute(); err != nil {
+	text, errText, err := renderOnce()
+	if err != nil {
 		t.Fatalf("expected render command to succeed, got %v", err)
 	}
 
-	text := stdout.String()
 	for _, expected := range []string{"## Summary", "## Risk", "## Findings", "### Blocker", "### Important", "## Checklist"} {
 		if !strings.Contains(text, expected) {
 			t.Fatalf("expected markdown output to include %q, got %q", expected, text)
@@ -300,8 +304,87 @@ func TestRenderCommandProducesDeterministicMarkdown(t *testing.T) {
 		t.Fatalf("expected findings grouped by severity order, got %q", text)
 	}
 
-	if strings.TrimSpace(stderr.String()) != "" {
-		t.Fatalf("expected empty stderr for render without verbose/what-if, got %q", stderr.String())
+	if strings.TrimSpace(errText) != "" {
+		t.Fatalf("expected empty stderr for render without verbose/what-if, got %q", errText)
+	}
+
+	textAgain, errTextAgain, err := renderOnce()
+	if err != nil {
+		t.Fatalf("expected second render command run to succeed, got %v", err)
+	}
+	if text != textAgain {
+		t.Fatalf("expected byte-identical deterministic markdown output, first=%q second=%q", text, textAgain)
+	}
+	if strings.TrimSpace(errTextAgain) != "" {
+		t.Fatalf("expected empty stderr on second render run, got %q", errTextAgain)
+	}
+}
+
+func TestRenderCommandRejectsMalformedJSON(t *testing.T) {
+	resetRenderFlagState(t)
+
+	rootCmd.SetIn(bytes.NewBufferString(`{"summary":`))
+	rootCmd.SetOut(&bytes.Buffer{})
+	rootCmd.SetErr(&bytes.Buffer{})
+	rootCmd.SetArgs([]string{"render"})
+
+	err := Execute()
+	if err == nil {
+		t.Fatalf("expected render command to fail for malformed JSON")
+	}
+	if !strings.Contains(err.Error(), "CONFIG_INVALID") {
+		t.Fatalf("expected CONFIG_INVALID classification, got %v", err)
+	}
+}
+
+func TestRenderCommandRejectsMissingRequiredFields(t *testing.T) {
+	resetRenderFlagState(t)
+
+	rootCmd.SetIn(bytes.NewBufferString(`{"summary":"","risk":{"score":0.3,"reasons":[]},"findings":[],"checklist":[]}`))
+	rootCmd.SetOut(&bytes.Buffer{})
+	rootCmd.SetErr(&bytes.Buffer{})
+	rootCmd.SetArgs([]string{"render"})
+
+	err := Execute()
+	if err == nil {
+		t.Fatalf("expected render command to fail for invalid review payload")
+	}
+	if !strings.Contains(err.Error(), "CONFIG_INVALID") {
+		t.Fatalf("expected CONFIG_INVALID classification, got %v", err)
+	}
+}
+
+func TestRenderCommandRejectsMissingFindingID(t *testing.T) {
+	resetRenderFlagState(t)
+
+	rootCmd.SetIn(bytes.NewBufferString(`{"summary":"Review summary","risk":{"score":0.2,"reasons":["Low risk"]},"findings":[{"id":"","file":"a.go","line":11,"severity":"important","category":"tests","message":"Missing tests","suggestion":"Add tests"}],"checklist":["Run CI"]}`))
+	rootCmd.SetOut(&bytes.Buffer{})
+	rootCmd.SetErr(&bytes.Buffer{})
+	rootCmd.SetArgs([]string{"render"})
+
+	err := Execute()
+	if err == nil {
+		t.Fatalf("expected render command to fail for missing finding id")
+	}
+	if !strings.Contains(err.Error(), "CONFIG_INVALID") {
+		t.Fatalf("expected CONFIG_INVALID classification, got %v", err)
+	}
+}
+
+func TestRenderCommandRejectsNonPositiveFindingLine(t *testing.T) {
+	resetRenderFlagState(t)
+
+	rootCmd.SetIn(bytes.NewBufferString(`{"summary":"Review summary","risk":{"score":0.2,"reasons":["Low risk"]},"findings":[{"id":"F001","file":"a.go","line":0,"severity":"important","category":"tests","message":"Missing tests","suggestion":"Add tests"}],"checklist":["Run CI"]}`))
+	rootCmd.SetOut(&bytes.Buffer{})
+	rootCmd.SetErr(&bytes.Buffer{})
+	rootCmd.SetArgs([]string{"render"})
+
+	err := Execute()
+	if err == nil {
+		t.Fatalf("expected render command to fail for non-positive finding line")
+	}
+	if !strings.Contains(err.Error(), "CONFIG_INVALID") {
+		t.Fatalf("expected CONFIG_INVALID classification, got %v", err)
 	}
 }
 

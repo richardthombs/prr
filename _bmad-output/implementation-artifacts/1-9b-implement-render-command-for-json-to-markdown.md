@@ -1,6 +1,6 @@
 # Story 1.9b: Implement Render Command for JSON to Markdown
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -20,30 +20,30 @@ so that human-readable review output is separated cleanly from `prr review` JSON
 
 ## Tasks / Subtasks
 
-- [ ] Add `render` command wiring (AC: 1, 2, 3, 4, 5)
-  - [ ] Create `cmd/prr/render.go` and register with `rootCmd.AddCommand`.
-  - [ ] Accept review JSON via stdin (optionally add file input flag if needed, but keep stdin as default).
-  - [ ] Keep Markdown output on stdout and diagnostics/errors on stderr.
+- [x] Add `render` command wiring (AC: 1, 2, 3, 4, 5)
+  - [x] Create `cmd/prr/render.go` and register with `rootCmd.AddCommand`.
+  - [x] Accept review JSON via stdin (optionally add file input flag if needed, but keep stdin as default).
+  - [x] Keep Markdown output on stdout and diagnostics/errors on stderr.
 
-- [ ] Implement render-domain contract and validation (AC: 1, 3)
-  - [ ] Add/confirm `internal/types/review.go` with review schema fields: summary, risk, findings, checklist.
-  - [ ] Validate required fields and value constraints before rendering.
-  - [ ] Return classed errors via `internal/errors` for invalid payloads.
+- [x] Implement render-domain contract and validation (AC: 1, 3)
+  - [x] Add/confirm `internal/types/review.go` with review schema fields: summary, risk, findings, checklist.
+  - [x] Validate required fields and value constraints before rendering.
+  - [x] Return classed errors via `internal/errors` for invalid payloads.
 
-- [ ] Implement deterministic Markdown rendering (AC: 1, 2)
-  - [ ] Render sections in fixed order: Summary → Risk → Findings by severity order (`blocker`, `important`, `suggestion`, `nit`) → Checklist.
-  - [ ] Use stable heading and bullet formatting.
-  - [ ] Preserve finding field rendering consistency (id, file, line, category, message, suggestion).
+- [x] Implement deterministic Markdown rendering (AC: 1, 2)
+  - [x] Render sections in fixed order: Summary → Risk → Findings by severity order (`blocker`, `important`, `suggestion`, `nit`) → Checklist.
+  - [x] Use stable heading and bullet formatting.
+  - [x] Preserve finding field rendering consistency (id, file, line, category, message, suggestion).
 
-- [ ] Implement verbose/what-if behaviour for this command path (AC: 4, 5)
-  - [ ] `--verbose` prints processing diagnostics to stderr.
-  - [ ] `--what-if` clearly indicates no external commands are executed.
+- [x] Implement verbose/what-if behaviour for this command path (AC: 4, 5)
+  - [x] `--verbose` prints processing diagnostics to stderr.
+  - [x] `--what-if` clearly indicates no external commands are executed.
 
-- [ ] Add focused tests (AC: 1, 2, 3, 4, 5)
-  - [ ] `cmd/prr` tests for valid JSON → Markdown shape and section ordering.
-  - [ ] Determinism test: same input yields byte-identical output.
-  - [ ] Validation tests for missing required fields and malformed JSON.
-  - [ ] stdout/stderr separation tests.
+- [x] Add focused tests (AC: 1, 2, 3, 4, 5)
+  - [x] `cmd/prr` tests for valid JSON → Markdown shape and section ordering.
+  - [x] Determinism test: same input yields byte-identical output.
+  - [x] Validation tests for missing required fields and malformed JSON.
+  - [x] stdout/stderr separation tests.
 
 ## Dev Notes
 
@@ -123,13 +123,64 @@ GPT-5.3-Codex
 ### Debug Log References
 
 - create-story-style generation for split story key `1-9b-implement-render-command-for-json-to-markdown`
+- Verified render implementation in `cmd/prr/render.go` and contract validation in `internal/types/review.go`.
+- Added focused render tests for malformed JSON, missing required fields, and byte-identical output determinism.
+- Executed targeted and full test validation (`go test ./...`) and build verification (`go build ./...`).
+- Code-review workflow run identified and fixed validation/classification gaps in render input handling.
 
 ### Completion Notes List
 
 - Story generated from approved change proposal split (`1-9` + `1-9b`).
 - Scope narrowed to JSON-to-Markdown rendering only.
-- Marked `ready-for-dev` in line with workflow completion.
+- Confirmed `render` command wiring and root command registration are present and working.
+- Confirmed deterministic markdown section ordering and stable findings grouping.
+- Added explicit invalid-input tests to enforce classed errors for malformed and incomplete payloads.
+- Split review validation into strict render input validation and review output normalisation.
+- Enforced positive finding line validation for render input payloads.
+- Enforced required finding ID for render input payloads (no silent ID synthesis).
+- Story implementation and post-review fixes validated and marked `done`.
 
 ### File List
 
 - _bmad-output/implementation-artifacts/1-9b-implement-render-command-for-json-to-markdown.md
+- _bmad-output/implementation-artifacts/sprint-status.yaml
+- cmd/prr/render.go
+- cmd/prr/review.go
+- cmd/prr/review_render_test.go
+- cmd/prr/root_test.go
+- internal/errors/errors.go
+- internal/errors/errors_test.go
+- internal/types/review.go
+
+## Senior Developer Review (AI)
+
+### Review Date
+
+2026-03-05
+
+### Outcome
+
+Approve
+
+### Summary
+
+- Adversarial review identified 5 issues (3 High, 2 Medium).
+- All High and Medium issues were fixed in this pass.
+- All acceptance criteria remain satisfied after fixes.
+
+### Findings Resolved
+
+- [x] [High] Enforce required finding IDs for render input validation (`internal/types/review.go`).
+- [x] [High] Classify invalid/incomplete `prr render` payload validation as input/config failures (`internal/types/review.go`, `cmd/prr/render.go`, `cmd/prr/review_render_test.go`).
+- [x] [High] Enforce positive finding line constraint for render input (`internal/types/review.go`, `cmd/prr/review_render_test.go`).
+- [x] [Medium] Reconcile story File List with actual changed source files (`_bmad-output/implementation-artifacts/1-9b-implement-render-command-for-json-to-markdown.md`).
+- [x] [Medium] Reconcile additional tracked source-file diffs in working tree (`cmd/prr/root_test.go`, `internal/errors/errors.go`, `internal/errors/errors_test.go`).
+
+### Notes
+
+- Local `prr` binary diff was excluded from review scope as a generated non-source artifact.
+
+## Change Log
+
+- 2026-03-05: Completed dev implementation for Story 1.9b and moved status to review.
+- 2026-03-05: Completed adversarial code-review remediation, updated story status to done, and reconciled sprint tracking.

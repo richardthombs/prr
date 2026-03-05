@@ -161,7 +161,7 @@ var reviewCmd = &cobra.Command{
 			return apperrors.WrapEngine("failed to run review engine", err)
 		}
 
-		validatedReview, err := types.NormalizeAndValidateReview(reviewOutput)
+		validatedReview, err := types.NormalizeAndValidateReviewOutput(reviewOutput)
 		if err != nil {
 			return err
 		}

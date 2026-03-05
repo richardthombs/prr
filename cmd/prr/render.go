@@ -39,7 +39,7 @@ var renderCmd = &cobra.Command{
 			return apperrors.WrapConfig("render command requires review JSON on stdin", nil)
 		}
 
-		review, err := types.NormalizeAndValidateReview(input)
+		review, err := types.ValidateReviewInput(input)
 		if err != nil {
 			return err
 		}

@@ -11,6 +11,8 @@ import (
 var validSeverities = []string{"blocker", "important", "suggestion", "nit"}
 var validCategories = []string{"correctness", "security", "performance", "readability", "api", "tests", "other"}
 
+type wrapFunc func(message string, cause error) error
+
 type Risk struct {
 	Score   float64  `json:"score"`
 	Reasons []string `json:"reasons"`
@@ -33,19 +35,31 @@ type Review struct {
 	Checklist []string  `json:"checklist"`
 }
 
+func NormalizeAndValidateReviewOutput(input Review) (Review, error) {
+	return validateReview(input, apperrors.WrapEngine, true, "review output")
+}
+
+func ValidateReviewInput(input Review) (Review, error) {
+	return validateReview(input, apperrors.WrapConfig, false, "review input")
+}
+
 func NormalizeAndValidateReview(input Review) (Review, error) {
+	return NormalizeAndValidateReviewOutput(input)
+}
+
+func validateReview(input Review, wrap wrapFunc, allowMissingID bool, label string) (Review, error) {
 	review := input
 
 	review.Summary = strings.TrimSpace(review.Summary)
 	if review.Summary == "" {
-		return Review{}, apperrors.WrapEngine("review output is missing summary", nil)
+		return Review{}, wrap(label+" is missing summary", nil)
 	}
 
 	if review.Risk.Score < 0 || review.Risk.Score > 1 {
-		return Review{}, apperrors.WrapEngine("review output risk.score must be between 0 and 1", nil)
+		return Review{}, wrap(label+" risk.score must be between 0 and 1", nil)
 	}
 	if review.Risk.Reasons == nil {
-		return Review{}, apperrors.WrapEngine("review output is missing risk.reasons", nil)
+		return Review{}, wrap(label+" is missing risk.reasons", nil)
 	}
 
 	for i := range review.Risk.Reasons {
@@ -53,48 +67,63 @@ func NormalizeAndValidateReview(input Review) (Review, error) {
 	}
 
 	if review.Findings == nil {
-		return Review{}, apperrors.WrapEngine("review output is missing findings", nil)
+		return Review{}, wrap(label+" is missing findings", nil)
 	}
 
 	for i := range review.Findings {
 		finding := &review.Findings[i]
 		if strings.TrimSpace(finding.ID) == "" {
-			finding.ID = fmt.Sprintf("F%03d", i+1)
+			if allowMissingID {
+				finding.ID = fmt.Sprintf("F%03d", i+1)
+			} else {
+				return Review{}, wrap(label+" finding is missing id", nil)
+			}
 		}
 
 		finding.File = strings.TrimSpace(finding.File)
 		if finding.File == "" {
-			return Review{}, apperrors.WrapEngine("review output finding is missing file", nil)
+			return Review{}, wrap(label+" finding is missing file", nil)
+		}
+
+		if finding.Line <= 0 {
+			if allowMissingID {
+				finding.Line = 1
+			} else {
+				return Review{}, wrap(label+" finding must include a positive line", nil)
+			}
 		}
 
 		severity := strings.ToLower(strings.TrimSpace(finding.Severity))
 		if !slices.Contains(validSeverities, severity) {
-			return Review{}, apperrors.WrapEngine("review output finding has invalid severity", nil)
+			return Review{}, wrap(label+" finding has invalid severity", nil)
 		}
 		finding.Severity = severity
 
 		category := strings.ToLower(strings.TrimSpace(finding.Category))
 		if !slices.Contains(validCategories, category) {
-			return Review{}, apperrors.WrapEngine("review output finding has invalid category", nil)
+			return Review{}, wrap(label+" finding has invalid category", nil)
 		}
 		finding.Category = category
 
 		finding.Message = strings.TrimSpace(finding.Message)
 		if finding.Message == "" {
-			return Review{}, apperrors.WrapEngine("review output finding is missing message", nil)
+			return Review{}, wrap(label+" finding is missing message", nil)
 		}
 
 		finding.Suggestion = strings.TrimSpace(finding.Suggestion)
 		if finding.Suggestion == "" {
-			return Review{}, apperrors.WrapEngine("review output finding is missing suggestion", nil)
+			return Review{}, wrap(label+" finding is missing suggestion", nil)
 		}
 	}
 
 	if review.Checklist == nil {
-		return Review{}, apperrors.WrapEngine("review output is missing checklist", nil)
+		return Review{}, wrap(label+" is missing checklist", nil)
 	}
 	for i := range review.Checklist {
 		review.Checklist[i] = strings.TrimSpace(review.Checklist[i])
+		if review.Checklist[i] == "" {
+			return Review{}, wrap(label+" checklist item is empty", nil)
+		}
 	}
 
 	return review, nil
