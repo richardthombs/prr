@@ -47,8 +47,8 @@ func TestResolveMirrorDirDeterministic(t *testing.T) {
 	if !strings.HasSuffix(first, ".git") {
 		t.Fatalf("expected deterministic mirror path to end with .git, got %q", first)
 	}
-	if !strings.Contains(first, "/example-org-repo.git") {
-		t.Fatalf("expected human-readable mirror path segment, got %q", first)
+	if filepath.Base(first) != "example-org-repo.git" {
+		t.Fatalf("expected human-readable mirror path segment, got %q", filepath.Base(first))
 	}
 }
 
@@ -60,8 +60,8 @@ func TestResolveMirrorDirGitHubUsesProviderOwnerRepoSlug(t *testing.T) {
 		t.Fatalf("expected mirror dir resolution to succeed, got %v", err)
 	}
 
-	if !strings.HasSuffix(path, "/github-steveyegge-beads.git") {
-		t.Fatalf("expected github provider-project-repo naming, got %q", path)
+	if filepath.Base(path) != "github-steveyegge-beads.git" {
+		t.Fatalf("expected github provider-project-repo naming, got %q", filepath.Base(path))
 	}
 }
 
@@ -73,8 +73,8 @@ func TestResolveMirrorDirAzureDevOpsUsesProviderProjectRepoSlug(t *testing.T) {
 		t.Fatalf("expected mirror dir resolution to succeed, got %v", err)
 	}
 
-	if !strings.HasSuffix(path, "/azure-ensekltd-blackbird.git") {
-		t.Fatalf("expected azure provider-project-repo naming, got %q", path)
+	if filepath.Base(path) != "azure-ensekltd-blackbird.git" {
+		t.Fatalf("expected azure provider-project-repo naming, got %q", filepath.Base(path))
 	}
 }
 

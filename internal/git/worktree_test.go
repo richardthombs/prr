@@ -15,24 +15,28 @@ import (
 func TestResolveWorktreeDirFromBareDirUsesDeterministicLayout(t *testing.T) {
 	service := NewServiceWithCacheDir(&recorderRunner{}, t.TempDir())
 
-	workDir, err := service.ResolveWorktreeDirFromBareDir("/tmp/abcdef123456.git", 42)
+	bareDir := filepath.Join(t.TempDir(), "abcdef123456.git")
+	workDir, err := service.ResolveWorktreeDirFromBareDir(bareDir, 42)
 	if err != nil {
 		t.Fatalf("expected worktree path resolution to succeed, got %v", err)
 	}
 
-	if !strings.Contains(workDir, "/prr/work/") {
-		t.Fatalf("expected worktree path under prr/work cache root, got %q", workDir)
+	repoHash := strings.TrimSuffix(filepath.Base(bareDir), ".git")
+	if filepath.Base(filepath.Dir(workDir)) != repoHash {
+		t.Fatalf("expected worktree repo segment %q, got %q", repoHash, filepath.Base(filepath.Dir(workDir)))
 	}
-	if !strings.Contains(workDir, "/abcdef123456/pr-42") {
-		t.Fatalf("expected repo hash and pr id segments in path, got %q", workDir)
+	if filepath.Base(workDir) != "pr-42" {
+		t.Fatalf("expected worktree leaf segment pr-42, got %q", filepath.Base(workDir))
 	}
 }
 
 func TestCreateWorktreeInvokesDetachedGitCommand(t *testing.T) {
 	runner := &recorderRunner{}
 	service := NewServiceWithCacheDir(runner, t.TempDir())
+	bareDir := filepath.Join(t.TempDir(), "repo.git")
+	workDir := filepath.Join(t.TempDir(), "work", "77")
 
-	err := service.CreateWorktree(context.Background(), "/tmp/repo.git", "refs/prr/pull/77/merge", "/tmp/work/77", EnsureOptions{})
+	err := service.CreateWorktree(context.Background(), bareDir, "refs/prr/pull/77/merge", workDir, EnsureOptions{})
 	if err != nil {
 		t.Fatalf("expected create worktree to succeed, got %v", err)
 	}
@@ -42,7 +46,7 @@ func TestCreateWorktreeInvokesDetachedGitCommand(t *testing.T) {
 	}
 
 	command := strings.Join(runner.commands[0], " ")
-	expected := "git -C /tmp/repo.git worktree add --detach /tmp/work/77 refs/prr/pull/77/merge"
+	expected := "git -C " + bareDir + " worktree add --detach " + workDir + " refs/prr/pull/77/merge"
 	if !strings.Contains(command, expected) {
 		t.Fatalf("expected detached worktree add command, got %q", command)
 	}
@@ -51,9 +55,11 @@ func TestCreateWorktreeInvokesDetachedGitCommand(t *testing.T) {
 func TestCreateWorktreeWhatIfLogsAndSkipsExecution(t *testing.T) {
 	runner := &recorderRunner{}
 	service := NewServiceWithCacheDir(runner, t.TempDir())
+	bareDir := filepath.Join(t.TempDir(), "repo.git")
+	workDir := filepath.Join(t.TempDir(), "work", "88")
 
 	logs := make([]string, 0)
-	err := service.CreateWorktree(context.Background(), "/tmp/repo.git", "refs/prr/pull/88/merge", "/tmp/work/88", EnsureOptions{
+	err := service.CreateWorktree(context.Background(), bareDir, "refs/prr/pull/88/merge", workDir, EnsureOptions{
 		Verbose: true,
 		WhatIf:  true,
 		Logger: func(format string, args ...any) {
@@ -67,7 +73,7 @@ func TestCreateWorktreeWhatIfLogsAndSkipsExecution(t *testing.T) {
 	if len(logs) == 0 {
 		t.Fatalf("expected logged command in what-if mode")
 	}
-	if !strings.Contains(logs[0], "exec: git -C /tmp/repo.git worktree add --detach /tmp/work/88 refs/prr/pull/88/merge") {
+	if !strings.Contains(logs[0], "exec: git -C "+bareDir+" worktree add --detach "+workDir+" refs/prr/pull/88/merge") {
 		t.Fatalf("expected logged detached add command, got %q", logs[0])
 	}
 	if len(runner.commands) != 0 {
@@ -91,7 +97,8 @@ func TestCreateWorktreeExistingPathResetsToMergeRef(t *testing.T) {
 	service := NewServiceWithCacheDir(runner, t.TempDir())
 
 	workDir := t.TempDir()
-	err := service.CreateWorktree(context.Background(), "/tmp/repo.git", "refs/prr/pull/188/merge", workDir, EnsureOptions{})
+	bareDir := filepath.Join(t.TempDir(), "repo.git")
+	err := service.CreateWorktree(context.Background(), bareDir, "refs/prr/pull/188/merge", workDir, EnsureOptions{})
 	if err != nil {
 		t.Fatalf("expected existing worktree reset to succeed, got %v", err)
 	}
@@ -119,8 +126,9 @@ func TestCreateWorktreeExistingPathWhatIfLogsResetAndSkipsExecution(t *testing.T
 	service := NewServiceWithCacheDir(runner, t.TempDir())
 
 	workDir := t.TempDir()
+	bareDir := filepath.Join(t.TempDir(), "repo.git")
 	logs := make([]string, 0)
-	err := service.CreateWorktree(context.Background(), "/tmp/repo.git", "refs/prr/pull/199/merge", workDir, EnsureOptions{
+	err := service.CreateWorktree(context.Background(), bareDir, "refs/prr/pull/199/merge", workDir, EnsureOptions{
 		Verbose: true,
 		WhatIf:  true,
 		Logger: func(format string, args ...any) {
@@ -157,13 +165,14 @@ func TestCreateWorktreeExistingInvalidDirectoryFallsBackToAdd(t *testing.T) {
 	}}
 
 	service := NewServiceWithCacheDir(runner, t.TempDir())
+	bareDir := filepath.Join(t.TempDir(), "repo.git")
 
 	workDir := filepath.Join(t.TempDir(), "pr-73")
 	if err := os.MkdirAll(workDir, 0o755); err != nil {
 		t.Fatalf("failed to create existing directory fixture: %v", err)
 	}
 
-	err := service.CreateWorktree(context.Background(), "/tmp/repo.git", "refs/prr/pull/73/merge", workDir, EnsureOptions{})
+	err := service.CreateWorktree(context.Background(), bareDir, "refs/prr/pull/73/merge", workDir, EnsureOptions{})
 	if err != nil {
 		t.Fatalf("expected fallback recreate to succeed, got %v", err)
 	}
@@ -176,10 +185,10 @@ func TestCreateWorktreeExistingInvalidDirectoryFallsBackToAdd(t *testing.T) {
 	foundAdd := false
 	for _, commandParts := range commands {
 		joined := strings.Join(commandParts, " ")
-		if strings.Contains(joined, "git -C /tmp/repo.git worktree prune") {
+		if strings.Contains(joined, "git -C "+bareDir+" worktree prune") {
 			foundPrune = true
 		}
-		if strings.Contains(joined, "git -C /tmp/repo.git worktree add --detach "+workDir+" refs/prr/pull/73/merge") {
+		if strings.Contains(joined, "git -C "+bareDir+" worktree add --detach "+workDir+" refs/prr/pull/73/merge") {
 			foundAdd = true
 		}
 	}
@@ -196,12 +205,13 @@ func TestCreateWorktreeExistingPathNonDirectoryFails(t *testing.T) {
 	runner := &recorderRunner{}
 	service := NewServiceWithCacheDir(runner, t.TempDir())
 
-	nonDirectoryPath := t.TempDir() + "/not-a-dir"
+	nonDirectoryPath := filepath.Join(t.TempDir(), "not-a-dir")
 	if err := os.WriteFile(nonDirectoryPath, []byte("x"), 0o644); err != nil {
 		t.Fatalf("failed to create non-directory path fixture: %v", err)
 	}
 
-	err := service.CreateWorktree(context.Background(), "/tmp/repo.git", "refs/prr/pull/200/merge", nonDirectoryPath, EnsureOptions{})
+	bareDir := filepath.Join(t.TempDir(), "repo.git")
+	err := service.CreateWorktree(context.Background(), bareDir, "refs/prr/pull/200/merge", nonDirectoryPath, EnsureOptions{})
 	if err == nil {
 		t.Fatalf("expected runtime error when worktree path exists as non-directory")
 	}
@@ -230,8 +240,10 @@ func (r stubRunner) Run(ctx context.Context, name string, args ...string) (strin
 func TestCleanupWorktreeInvokesRemoveAndPrune(t *testing.T) {
 	runner := &recorderRunner{}
 	service := NewServiceWithCacheDir(runner, t.TempDir())
+	bareDir := filepath.Join(t.TempDir(), "repo.git")
+	workDir := filepath.Join(t.TempDir(), "work", "99")
 
-	err := service.CleanupWorktree(context.Background(), "/tmp/repo.git", "/tmp/work/99", EnsureOptions{})
+	err := service.CleanupWorktree(context.Background(), bareDir, workDir, EnsureOptions{})
 	if err != nil {
 		t.Fatalf("expected cleanup to succeed, got %v", err)
 	}
@@ -241,12 +253,12 @@ func TestCleanupWorktreeInvokesRemoveAndPrune(t *testing.T) {
 	}
 
 	first := strings.Join(runner.commands[0], " ")
-	if !strings.Contains(first, "git -C /tmp/repo.git worktree remove --force /tmp/work/99") {
+	if !strings.Contains(first, "git -C "+bareDir+" worktree remove --force "+workDir) {
 		t.Fatalf("expected worktree remove command first, got %q", first)
 	}
 
 	second := strings.Join(runner.commands[1], " ")
-	if !strings.Contains(second, "git -C /tmp/repo.git worktree prune") {
+	if !strings.Contains(second, "git -C "+bareDir+" worktree prune") {
 		t.Fatalf("expected worktree prune command second, got %q", second)
 	}
 }
@@ -254,9 +266,11 @@ func TestCleanupWorktreeInvokesRemoveAndPrune(t *testing.T) {
 func TestCleanupWorktreeWhatIfLogsAndSkipsExecution(t *testing.T) {
 	runner := &recorderRunner{}
 	service := NewServiceWithCacheDir(runner, t.TempDir())
+	bareDir := filepath.Join(t.TempDir(), "repo.git")
+	workDir := filepath.Join(t.TempDir(), "work", "100")
 
 	logs := make([]string, 0)
-	err := service.CleanupWorktree(context.Background(), "/tmp/repo.git", "/tmp/work/100", EnsureOptions{
+	err := service.CleanupWorktree(context.Background(), bareDir, workDir, EnsureOptions{
 		Verbose: true,
 		WhatIf:  true,
 		Logger: func(format string, args ...any) {
@@ -270,10 +284,10 @@ func TestCleanupWorktreeWhatIfLogsAndSkipsExecution(t *testing.T) {
 	if len(logs) < 2 {
 		t.Fatalf("expected planned remove+prune logs in what-if mode, got %d log(s)", len(logs))
 	}
-	if !strings.Contains(logs[0], "exec: git -C /tmp/repo.git worktree remove --force /tmp/work/100") {
+	if !strings.Contains(logs[0], "exec: git -C "+bareDir+" worktree remove --force "+workDir) {
 		t.Fatalf("expected remove command log, got %q", logs[0])
 	}
-	if !strings.Contains(logs[1], "exec: git -C /tmp/repo.git worktree prune") {
+	if !strings.Contains(logs[1], "exec: git -C "+bareDir+" worktree prune") {
 		t.Fatalf("expected prune command log, got %q", logs[1])
 	}
 	if len(runner.commands) != 0 {
@@ -284,8 +298,10 @@ func TestCleanupWorktreeWhatIfLogsAndSkipsExecution(t *testing.T) {
 func TestCleanupWorktreeClassifiesRemoveFailureAsRuntime(t *testing.T) {
 	runner := &recorderRunner{err: errors.New("remove failed")}
 	service := NewServiceWithCacheDir(runner, t.TempDir())
+	bareDir := filepath.Join(t.TempDir(), "repo.git")
+	workDir := filepath.Join(t.TempDir(), "work", "101")
 
-	err := service.CleanupWorktree(context.Background(), "/tmp/repo.git", "/tmp/work/101", EnsureOptions{})
+	err := service.CleanupWorktree(context.Background(), bareDir, workDir, EnsureOptions{})
 	if err == nil {
 		t.Fatalf("expected runtime error when remove fails")
 	}

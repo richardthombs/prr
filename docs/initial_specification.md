@@ -76,7 +76,7 @@ PRR maintains a cached bare mirror per repository URL.
 Default location:
 
 ```
-~/.cache/prr/repos/<repoHash>.git
+<user-cache-dir>/prr/repos/<repoHash>.git
 ```
 
 Creation:
@@ -130,7 +130,7 @@ PRR must not use the developer’s existing working directory.
 Default location:
 
 ```
-~/.cache/prr/work/<repoHash>/pr-<PR_ID>/<runId>/
+<user-cache-dir>/prr/work/<repoHash>/pr-<PR_ID>/<runId>/
 ```
 
 Where `<runId>` is a unique identifier (e.g., timestamp).
