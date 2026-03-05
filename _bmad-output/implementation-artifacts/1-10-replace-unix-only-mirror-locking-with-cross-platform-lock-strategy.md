@@ -1,6 +1,6 @@
 # Story 1.10: Replace Unix-Only Mirror Locking with Cross-Platform Lock Strategy
 
-Status: review
+Status: done
 
 ## Story
 
