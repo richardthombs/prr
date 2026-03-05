@@ -4,20 +4,17 @@ PRR is a CLI tool that automates pull request review from a single command by cr
 
 ## Commands
 
-- `prr review <PR_ID>`  
-  Run an end-to-end review for a pull request.
+- `prr review [<PR_ID>|<PR_URL>]`  
+  Run an end-to-end review for a pull request using either numeric ID or full PR URL input.
 
-- `prr review <PR_ID> --keep`  
+- `prr checkout <PR_URL> | prr review`  
+  Pipe checkout JSON directly into review so `prId`, `repoUrl`, `provider`, and `remote` are inferred from stdin.
+
+- `prr review [<PR_ID>|<PR_URL>] --keep`  
   Keep the isolated review worktree after the run for inspection.
 
-- `prr review <PR_ID> --output-format <markdown|json>`  
-  Choose human-readable Markdown (default) or structured JSON output.
-
-- `prr review <PR_ID> --publish`  
-  Publish review results back to the pull request when supported.
-
-- `prr review <PR_ID> --provider <provider> --repo <owner/repo>`  
-  Override inferred provider/repository context.
+- `prr review <PR_ID> --provider <provider> --repo <repoUrl>`  
+  Optional explicit overrides when ID-only input is used and automatic context is not sufficient.
 
 - `prr checkout <PR_URL> [--provider <provider>] [--repo <repoUrl>] [--remote <name>] [--keep] [--verbose] [--what-if]`
   Resolve PR context, ensure/update mirror, fetch merge ref, and prepare/reset the isolated worktree in one command.
@@ -32,7 +29,7 @@ PRR is a CLI tool that automates pull request review from a single command by cr
   Build and validate a v1 review bundle from `diff` JSON on stdin.
   Enforces optional input-size limits with explicit diagnostics when limits are exceeded.
 
-- `prr review <PR_ID> --max-patch-bytes <bytes> --max-files <count>`  
+- `prr review [<PR_ID>|<PR_URL>] --max-patch-bytes <bytes> --max-files <count>`  
   Override safety limits for patch size and changed file count.
 
 - `prr --help`  
@@ -50,3 +47,13 @@ prr checkout "https://github.com/<owner>/<repo>/pull/<id>"
 ```
 
 The `checkout` output includes workspace fields (for example `bareDir`, `mergeRef`, `workDir`) ready for downstream `diff` and `bundle` stages.
+
+## Review examples
+
+```bash
+# Run review using full PR URL (no --repo/--provider required)
+prr review "https://github.com/<owner>/<repo>/pull/<id>"
+
+# Run review from checkout JSON pipeline
+prr checkout "https://github.com/<owner>/<repo>/pull/<id>" | prr review
+```

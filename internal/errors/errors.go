@@ -9,6 +9,7 @@ type Class string
 const (
 	ClassConfig   Class = "CONFIG_INVALID"
 	ClassProvider Class = "PROVIDER_RESOLUTION"
+	ClassEngine   Class = "ENGINE_FAILURE"
 	ClassLimit    Class = "LIMIT_EXCEEDED"
 	ClassRuntime  Class = "RUNTIME_FAILURE"
 )
@@ -16,6 +17,7 @@ const (
 const (
 	exitConfig = 2
 	exitAPI    = 3
+	exitEngine = 6
 	exitLimit  = 4
 	exitRun    = 5
 )
@@ -50,6 +52,10 @@ func WrapRuntime(message string, cause error) error {
 	return &AppError{Class: ClassRuntime, Message: message, Cause: cause}
 }
 
+func WrapEngine(message string, cause error) error {
+	return &AppError{Class: ClassEngine, Message: message, Cause: cause}
+}
+
 func WrapLimit(message string, cause error) error {
 	return &AppError{Class: ClassLimit, Message: message, Cause: cause}
 }
@@ -69,6 +75,8 @@ func ExitCode(err error) int {
 		return exitConfig
 	case ClassProvider:
 		return exitAPI
+	case ClassEngine:
+		return exitEngine
 	case ClassLimit:
 		return exitLimit
 	default:

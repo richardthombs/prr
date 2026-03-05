@@ -1,6 +1,6 @@
 # Story 1.9: Implement Review Command JSON Output Contract
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -20,36 +20,36 @@ so that one command performs full review orchestration and can be consumed direc
 
 ## Tasks / Subtasks
 
-- [ ] Implement `review` command orchestration to produce final JSON review output (AC: 1, 4, 5)
-  - [ ] Extend `cmd/prr/review.go` from scaffold command to a `RunE` path with required flags (`--repo`, `--remote`, `--provider`, `--keep`, `--verbose`, `--what-if`).
-  - [ ] Orchestrate existing internal stages in sequence: resolve context, ensure/fetch mirror state, create worktree, generate diff, build bundle, run engine, output review JSON.
-  - [ ] Reuse existing `internal/git` and `internal/bundle` components; do not duplicate stage logic in command handlers.
-  - [ ] Keep JSON payload on stdout and diagnostics on stderr.
+- [x] Implement `review` command orchestration to produce final JSON review output (AC: 1, 4, 5)
+  - [x] Extend `cmd/prr/review.go` from scaffold command to a `RunE` path with required flags (`--repo`, `--remote`, `--provider`, `--keep`, `--verbose`, `--what-if`).
+  - [x] Orchestrate existing internal stages in sequence: resolve context, ensure/fetch mirror state, create worktree, generate diff, build bundle, run engine, output review JSON.
+  - [x] Reuse existing `internal/git` and `internal/bundle` components; do not duplicate stage logic in command handlers.
+  - [x] Keep JSON payload on stdout and diagnostics on stderr.
 
-- [ ] Add review output contract types and validation (AC: 1)
-  - [ ] Add review-domain types under `internal/types` for `Risk`, `Finding`, and `Review` with camelCase JSON tags.
-  - [ ] Enforce required fields for summary/risk/findings/checklist before printing final JSON.
-  - [ ] Ensure finding IDs are present for each run and need only be stable within the run.
+- [x] Add review output contract types and validation (AC: 1)
+  - [x] Add review-domain types under `internal/types` for `Risk`, `Finding`, and `Review` with camelCase JSON tags.
+  - [x] Enforce required fields for summary/risk/findings/checklist before printing final JSON.
+  - [x] Ensure finding IDs are present for each run and need only be stable within the run.
 
-- [ ] Add review engine abstraction and default adapter seam (AC: 1)
-  - [ ] Introduce `ReviewEngine` interface and adapter boundary (prefer `internal/engine` package as architecture target).
-  - [ ] Return classed errors for engine failures; preserve actionable messages.
-  - [ ] Keep implementation swappable (no provider/engine coupling in command files).
+- [x] Add review engine abstraction and default adapter seam (AC: 1)
+  - [x] Introduce `ReviewEngine` interface and adapter boundary (prefer `internal/engine` package as architecture target).
+  - [x] Return classed errors for engine failures; preserve actionable messages.
+  - [x] Keep implementation swappable (no provider/engine coupling in command files).
 
-- [ ] Implement `render` command for JSON-to-Markdown (AC: 2, 4, 5)
-  - [ ] Add `cmd/prr/render.go` command.
-  - [ ] Read review JSON from stdin (and optionally file flag if introduced) and render deterministic Markdown sections: Summary, Risk, Findings grouped by severity, Checklist.
-  - [ ] Ensure no schema-breaking stdout/stderr behaviour changes.
+- [x] Implement `render` command for JSON-to-Markdown (AC: 2, 4, 5)
+  - [x] Add `cmd/prr/render.go` command.
+  - [x] Read review JSON from stdin (and optionally file flag if introduced) and render deterministic Markdown sections: Summary, Risk, Findings grouped by severity, Checklist.
+  - [x] Ensure no schema-breaking stdout/stderr behaviour changes.
 
-- [ ] Keep publish out of MVP command surface while preserving extension point (AC: 3)
-  - [ ] Do not make publish part of required MVP flow for this story.
-  - [ ] Keep provider publish contract as optional extension path only.
+- [x] Keep publish out of MVP command surface while preserving extension point (AC: 3)
+  - [x] Do not make publish part of required MVP flow for this story.
+  - [x] Keep provider publish contract as optional extension path only.
 
-- [ ] Add tests for command contracts and error classes (AC: 1, 2, 4, 5)
-  - [ ] `cmd/prr` tests for `review` JSON shape and stdout/stderr separation.
-  - [ ] `cmd/prr` tests for `render` deterministic Markdown output from fixed JSON fixture.
-  - [ ] Tests for `--verbose` and `--what-if` behaviour in new command paths.
-  - [ ] Tests for engine failure classification and exit-code mapping.
+- [x] Add tests for command contracts and error classes (AC: 1, 2, 4, 5)
+  - [x] `cmd/prr` tests for `review` JSON shape and stdout/stderr separation.
+  - [x] `cmd/prr` tests for `render` deterministic Markdown output from fixed JSON fixture.
+  - [x] Tests for `--verbose` and `--what-if` behaviour in new command paths.
+  - [x] Tests for engine failure classification and exit-code mapping.
 
 ## Dev Notes
 
@@ -133,13 +133,29 @@ GPT-5.3-Codex
 ### Debug Log References
 
 - create-story workflow executed for approved pivot story key `1-9-implement-review-command-json-output-contract`
+- Implemented `review` orchestration flow and `render` command with deterministic contract tests.
+- Executed full regression suite with `go test ./...`.
 
 ### Completion Notes List
 
 - Ultimate context engine analysis completed - comprehensive developer guide created.
 - Story generated for updated command model (`review` JSON contract + `render` markdown conversion).
 - Guidance prioritises reuse of existing internal diff/bundle capabilities from Story 1.8.
+- Implemented full `prr review <PR_ID>` orchestration using resolver, mirror/worktree, diff, bundle, engine adapter, and JSON output validation.
+- Added `internal/types` review domain model with strict required-field validation and per-run finding ID assignment.
+- Added `internal/engine` interface plus default swappable adapter seam.
+- Added `prr render` for deterministic markdown output grouped by severity with stable stdout/stderr behaviour.
+- Added command tests for review/render contract behaviour including `--verbose` and `--what-if`, and engine failure classification.
+- Extended error class mapping with `ENGINE_FAILURE` and stable exit code coverage.
 
 ### File List
 
 - _bmad-output/implementation-artifacts/1-9-implement-review-command-json-output-contract.md
+- cmd/prr/review.go
+- cmd/prr/render.go
+- cmd/prr/review_render_test.go
+- cmd/prr/root_test.go
+- internal/engine/engine.go
+- internal/errors/errors.go
+- internal/errors/errors_test.go
+- internal/types/review.go
