@@ -2,6 +2,15 @@
 
 PRR is a CLI tool that automates pull request review from a single command by creating an isolated merge snapshot, generating a deterministic diff bundle, and sending it to a review engine for actionable output. It is designed to save setup time, keep reviews consistent, and protect your active working copy by running in a separate worktree with clear, script-friendly success and failure signalling.
 
+## Build and test (cross-platform source of truth)
+
+- Build all packages: `go build ./...`
+- Run all tests: `go test ./...`
+- Build CLI binary only: `go build -o ./prr ./cmd/prr`
+
+These Go commands are the canonical contributor workflow on macOS, Linux, and Windows.
+`Makefile` targets are optional convenience helpers for Unix-like environments.
+
 ## Commands
 
 - `prr review [<PR_ID>|<PR_URL>]`  
@@ -21,14 +30,6 @@ PRR is a CLI tool that automates pull request review from a single command by cr
   Emits a single JSON payload including `prId`, `repoUrl`, `remote`, `provider`, `bareDir`, `mergeRef`, `workDir`, `keep`, and `cleanup`.
   Supports Azure DevOps and GitHub PR URL formats.
 
-- `prr diff [--work-dir <path>] [--verbose] [--what-if]`
-  Generate deterministic diff outputs from `HEAD^1..HEAD` in the isolated worktree and emit JSON with `files`, `stat`, and `patch`.
-  Accepts stdin JSON (for example from `checkout`) and falls back to `workDir` from that payload when `--work-dir` is omitted.
-
-- `prr bundle [--max-patch-bytes <bytes>] [--max-files <count>] [--verbose] [--what-if]`
-  Build and validate a v1 review bundle from `diff` JSON on stdin.
-  Enforces optional input-size limits with explicit diagnostics when limits are exceeded.
-
 - `prr review [<PR_ID>|<PR_URL>] --max-patch-bytes <bytes> --max-files <count>`  
   Override safety limits for patch size and changed file count.
 
@@ -46,7 +47,7 @@ PRR is a CLI tool that automates pull request review from a single command by cr
 prr checkout "https://github.com/<owner>/<repo>/pull/<id>"
 ```
 
-The `checkout` output includes workspace fields (for example `bareDir`, `mergeRef`, `workDir`) ready for downstream `diff` and `bundle` stages.
+The `checkout` output includes workspace fields (for example `bareDir`, `mergeRef`, `workDir`) ready for downstream review pipeline stages.
 
 ## Review examples
 

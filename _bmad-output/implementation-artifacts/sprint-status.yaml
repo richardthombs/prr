@@ -53,7 +53,7 @@ development_status:
   1-9b-implement-render-command-for-json-to-markdown: done
   1-10-replace-unix-only-mirror-locking-with-cross-platform-lock-strategy: done
   1-11-normalise-cross-platform-path-and-test-contracts: done
-  1-12-add-cross-os-build-and-smoke-verification-for-cli-baseline: ready-for-dev
+  1-12-add-cross-os-build-and-smoke-verification-for-cli-baseline: done
   epic-1-retrospective: optional
   epic-2: backlog
   2-1-create-and-maintain-per-repository-bare-mirror-cache: backlog

@@ -1,0 +1,109 @@
+name: Cross-OS Build and Smoke
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  verify:
+    name: Verify on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            exe_suffix: ""
+          - os: macos-latest
+            exe_suffix: ""
+          - os: windows-latest
+            exe_suffix: ".exe"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build all packages
+        run: go build ./...
+
+      - name: Run unit tests
+        run: go test ./...
+
+      - name: Build CLI binary for smoke checks
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path dist -Force | Out-Null
+          go build -o dist/prr${{ matrix.exe_suffix }} ./cmd/prr
+
+      - name: Smoke checks for help/version/what-if contracts
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $binaryPath = Join-Path $PWD ("dist/prr" + "${{ matrix.exe_suffix }}")
+
+          if (-not (Test-Path $binaryPath)) {
+            throw "Expected smoke binary at $binaryPath"
+          }
+
+          $helpStdoutPath = Join-Path $env:RUNNER_TEMP "prr-help-stdout.txt"
+          $helpStderrPath = Join-Path $env:RUNNER_TEMP "prr-help-stderr.txt"
+          & $binaryPath --help 1> $helpStdoutPath 2> $helpStderrPath
+          if ($LASTEXITCODE -ne 0) {
+            throw "prr --help failed with exit code $LASTEXITCODE"
+          }
+          $helpText = Get-Content -Raw $helpStdoutPath
+          $helpStderr = Get-Content -Raw $helpStderrPath
+          if (($helpText | Out-String) -notmatch "Use:\s+prr") {
+            throw "prr --help output did not include expected usage contract"
+          }
+          if (-not [string]::IsNullOrWhiteSpace($helpStderr)) {
+            throw "prr --help stderr was expected to be empty"
+          }
+
+          $versionStdoutPath = Join-Path $env:RUNNER_TEMP "prr-version-stdout.txt"
+          $versionStderrPath = Join-Path $env:RUNNER_TEMP "prr-version-stderr.txt"
+          & $binaryPath version 1> $versionStdoutPath 2> $versionStderrPath
+          if ($LASTEXITCODE -ne 0) {
+            throw "prr version failed with exit code $LASTEXITCODE"
+          }
+          $versionText = Get-Content -Raw $versionStdoutPath
+          $versionStderr = Get-Content -Raw $versionStderrPath
+          if ([string]::IsNullOrWhiteSpace(($versionText | Out-String))) {
+            throw "prr version output was unexpectedly empty"
+          }
+          if (-not [string]::IsNullOrWhiteSpace($versionStderr)) {
+            throw "prr version stderr was expected to be empty"
+          }
+
+          $stdoutPath = Join-Path $env:RUNNER_TEMP "prr-checkout-stdout.txt"
+          $stderrPath = Join-Path $env:RUNNER_TEMP "prr-checkout-stderr.txt"
+          & $binaryPath checkout "https://github.com/octocat/Hello-World/pull/1" --what-if 1> $stdoutPath 2> $stderrPath
+          if ($LASTEXITCODE -ne 0) {
+            throw "prr checkout <PR_URL> --what-if failed with exit code $LASTEXITCODE"
+          }
+
+          $checkoutStdout = Get-Content -Raw $stdoutPath
+          $checkoutStderr = Get-Content -Raw $stderrPath
+
+          if ([string]::IsNullOrWhiteSpace($checkoutStdout)) {
+            throw "what-if checkout stdout was unexpectedly empty"
+          }
+          if ($checkoutStdout -notmatch '"prId"\s*:\s*1') {
+            throw "what-if checkout stdout did not include expected prId JSON field"
+          }
+          if ($checkoutStdout -notmatch '"provider"\s*:\s*"github"') {
+            throw "what-if checkout stdout did not include expected provider JSON field"
+          }
+
+          if ([string]::IsNullOrWhiteSpace($checkoutStderr)) {
+            throw "what-if checkout stderr was unexpectedly empty"
+          }
+          if ($checkoutStderr -notmatch '\[prr\]\s+exec:\s+git') {
+            throw "what-if checkout stderr did not include expected command trace"
+          }

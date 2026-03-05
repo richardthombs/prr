@@ -2,6 +2,9 @@ BINARY := prr
 BUILD_DIR := dist
 GOARCH ?= amd64
 
+# Optional convenience targets for Unix-like environments.
+# Canonical cross-platform contributor commands are: go build ./... and go test ./...
+
 .PHONY: build build-darwin build-linux build-windows build-all test clean
 
 build:
