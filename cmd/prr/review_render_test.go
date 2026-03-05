@@ -271,6 +271,128 @@ func TestReviewCommandClassifiesEngineFailures(t *testing.T) {
 	}
 }
 
+func TestReviewCommandEmitsDeterministicJSONShape(t *testing.T) {
+	resetReviewFlagState(t)
+
+	originalMirrorFactory := mirrorServiceFactory
+	originalEngineFactory := reviewEngineFactory
+	t.Cleanup(func() {
+		mirrorServiceFactory = originalMirrorFactory
+		reviewEngineFactory = originalEngineFactory
+	})
+
+	runner := stubRunner{runFunc: func(_ context.Context, _ string, _ ...string) (string, error) {
+		t.Fatalf("expected no external command execution in what-if mode")
+		return "", nil
+	}}
+	mirrorServiceFactory = func() *git.Service { return git.NewServiceWithCacheDir(runner, t.TempDir()) }
+	reviewEngineFactory = func() engine.ReviewEngine {
+		return reviewEngineFunc(func(_ context.Context, _ types.BundleV1) (types.Review, error) {
+			return types.Review{
+				Summary: "Deterministic review",
+				Risk: types.Risk{
+					Score:   0.25,
+					Reasons: []string{"Stable fixture"},
+				},
+				Findings: []types.Finding{{
+					ID:         "F001",
+					File:       "a.go",
+					Line:       7,
+					Severity:   "important",
+					Category:   "tests",
+					Message:    "Add coverage",
+					Suggestion: "Add assertions",
+				}},
+				Checklist: []string{"Run CI"},
+			}, nil
+		})
+	}
+
+	stdout := &bytes.Buffer{}
+	rootCmd.SetIn(bytes.NewBuffer(nil))
+	rootCmd.SetOut(stdout)
+	rootCmd.SetErr(&bytes.Buffer{})
+	rootCmd.SetArgs([]string{"review", "42", "--repo", "https://github.com/acme/repo", "--provider", "github", "--what-if"})
+
+	if err := Execute(); err != nil {
+		t.Fatalf("expected review command to succeed, got %v", err)
+	}
+
+	const expected = "{\"summary\":\"Deterministic review\",\"risk\":{\"score\":0.25,\"reasons\":[\"Stable fixture\"]},\"findings\":[{\"id\":\"F001\",\"file\":\"a.go\",\"line\":7,\"severity\":\"important\",\"category\":\"tests\",\"message\":\"Add coverage\",\"suggestion\":\"Add assertions\"}],\"checklist\":[\"Run CI\"]}\n"
+	if stdout.String() != expected {
+		t.Fatalf("expected deterministic JSON output.\nwant: %q\n got: %q", expected, stdout.String())
+	}
+}
+
+func TestReviewOutputCanBePipedIntoRenderDeterministically(t *testing.T) {
+	resetReviewFlagState(t)
+	resetRenderFlagState(t)
+
+	originalMirrorFactory := mirrorServiceFactory
+	originalEngineFactory := reviewEngineFactory
+	t.Cleanup(func() {
+		mirrorServiceFactory = originalMirrorFactory
+		reviewEngineFactory = originalEngineFactory
+	})
+
+	service := git.NewServiceWithCacheDir(stubRunner{runFunc: func(_ context.Context, _ string, args ...string) (string, error) {
+		joined := strings.Join(args, " ")
+		switch {
+		case strings.Contains(joined, "diff --name-only HEAD^1..HEAD"):
+			return "a.txt\n", nil
+		case strings.Contains(joined, "diff --stat HEAD^1..HEAD"):
+			return "1 file changed", nil
+		case strings.Contains(joined, "diff --patch --binary HEAD^1..HEAD"):
+			return "diff --git a/a.txt b/a.txt", nil
+		default:
+			return "", nil
+		}
+	}}, t.TempDir())
+	mirrorServiceFactory = func() *git.Service { return service }
+	reviewEngineFactory = func() engine.ReviewEngine { return engine.NewDefaultAdapter() }
+
+	reviewStdout := &bytes.Buffer{}
+	rootCmd.SetIn(bytes.NewBuffer(nil))
+	rootCmd.SetOut(reviewStdout)
+	rootCmd.SetErr(&bytes.Buffer{})
+	rootCmd.SetArgs([]string{"review", "42", "--repo", "https://github.com/acme/repo", "--provider", "github"})
+
+	if err := Execute(); err != nil {
+		t.Fatalf("expected review command to succeed, got %v", err)
+	}
+
+	renderOnce := func() (string, error) {
+		stdout := &bytes.Buffer{}
+		rootCmd.SetIn(bytes.NewBuffer(reviewStdout.Bytes()))
+		rootCmd.SetOut(stdout)
+		rootCmd.SetErr(&bytes.Buffer{})
+		rootCmd.SetArgs([]string{"render"})
+		if err := Execute(); err != nil {
+			return "", err
+		}
+
+		return stdout.String(), nil
+	}
+
+	first, err := renderOnce()
+	if err != nil {
+		t.Fatalf("expected first render to succeed, got %v", err)
+	}
+	second, err := renderOnce()
+	if err != nil {
+		t.Fatalf("expected second render to succeed, got %v", err)
+	}
+
+	if first != second {
+		t.Fatalf("expected deterministic markdown when rendering same review JSON")
+	}
+	for _, expected := range []string{"## Summary", "## Risk", "## Findings", "## Checklist"} {
+		if !strings.Contains(first, expected) {
+			t.Fatalf("expected rendered markdown to include %q", expected)
+		}
+	}
+}
+
 func TestRenderCommandProducesDeterministicMarkdown(t *testing.T) {
 	resetRenderFlagState(t)
 

@@ -33,7 +33,7 @@ func (e *AppError) Error() string {
 		return fmt.Sprintf("%s: %s", e.Class, e.Message)
 	}
 
-	return fmt.Sprintf("%s: %s", e.Class, e.Message)
+	return fmt.Sprintf("%s: %s: %v", e.Class, e.Message, e.Cause)
 }
 
 func (e *AppError) Unwrap() error {
