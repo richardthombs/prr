@@ -2,14 +2,12 @@ package git
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
-	"syscall"
 	"time"
 
 	apperrors "github.com/richardthombs/prr/internal/errors"
@@ -285,12 +283,12 @@ func (s *Service) withRepoLock(bareDir string, opts EnsureOptions, run func() er
 
 	deadline := time.Now().Add(lockTimeout)
 	for {
-		err = syscall.Flock(int(lockFile.Fd()), syscall.LOCK_EX|syscall.LOCK_NB)
+		err = tryLockFile(lockFile)
 		if err == nil {
 			break
 		}
 
-		if !errors.Is(err, syscall.EWOULDBLOCK) && !errors.Is(err, syscall.EAGAIN) {
+		if !isLockBusy(err) {
 			return apperrors.WrapRuntime("failed to acquire mirror lock", err)
 		}
 
@@ -304,7 +302,9 @@ func (s *Service) withRepoLock(bareDir string, opts EnsureOptions, run func() er
 		time.Sleep(200 * time.Millisecond)
 	}
 
-	defer syscall.Flock(int(lockFile.Fd()), syscall.LOCK_UN)
+	defer func() {
+		_ = unlockFile(lockFile)
+	}()
 
 	if err := run(); err != nil {
 		return err

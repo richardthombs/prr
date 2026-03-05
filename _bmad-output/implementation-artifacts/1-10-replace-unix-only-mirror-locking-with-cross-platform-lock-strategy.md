@@ -1,6 +1,6 @@
 # Story 1.10: Replace Unix-Only Mirror Locking with Cross-Platform Lock Strategy
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -16,12 +16,12 @@ so that concurrent review safety is preserved regardless of host OS.
 
 ## Tasks / Subtasks
 
-- [ ] Introduce OS-safe lock abstraction for mirror lock acquisition/release (AC: 1, 2)
-- [ ] Replace direct `syscall.Flock` usage in production code with abstraction (AC: 1, 2)
-- [ ] Add platform-specific implementations (or equivalent strategy) for Unix and Windows (AC: 1)
-- [ ] Preserve existing timeout and `--force` semantics in lock orchestration (AC: 2)
-- [ ] Update lock-focused tests to be platform-safe and matrix-ready (AC: 3)
-- [ ] Add/adjust CI test expectations for lock behaviour across all target OSes (AC: 3)
+- [x] Introduce OS-safe lock abstraction for mirror lock acquisition/release (AC: 1, 2)
+- [x] Replace direct `syscall.Flock` usage in production code with abstraction (AC: 1, 2)
+- [x] Add platform-specific implementations (or equivalent strategy) for Unix and Windows (AC: 1)
+- [x] Preserve existing timeout and `--force` semantics in lock orchestration (AC: 2)
+- [x] Update lock-focused tests to be platform-safe and matrix-ready (AC: 3)
+- [x] Add/adjust CI test expectations for lock behaviour across all target OSes (AC: 3)
 
 ## Dev Notes
 
@@ -44,7 +44,28 @@ GPT-5.3-Codex
 ### Completion Notes List
 
 - 2026-03-05: Story file created from approved Epic 1 cross-platform additions.
+- 2026-03-05: Replaced direct mirror locking calls with OS-specific lock helpers (`tryLockFile`/`unlockFile`/`isLockBusy`) while preserving timeout and `--force` behaviour.
+- 2026-03-05: Added Windows lock implementation using `LockFileEx`/`UnlockFileEx` via `kernel32` calls with Unix implementation retained under build tags.
+- 2026-03-05: Split lock contention test setup into OS-specific test helpers so shared tests no longer depend on Unix-only syscalls.
+- 2026-03-05: Validation run: `go test ./...` (pass), `GOOS=windows GOARCH=amd64 go build ./...` (pass), `GOOS=windows GOARCH=amd64 go test -c ./internal/git` (pass).
+
+### Implementation Plan
+
+- Introduce build-tagged lock helper files to isolate OS-specific lock syscalls from shared mirror logic.
+- Preserve existing lock orchestration in `withRepoLock` (timeout retry loop, force bypass, runtime error wrapping).
+- Keep shared tests platform-neutral and move lock-acquisition primitives into OS-specific test helper files.
+- Verify behaviour via full suite plus Windows cross-compilation checks for both package code and tests.
 
 ### File List
 
 - _bmad-output/implementation-artifacts/1-10-replace-unix-only-mirror-locking-with-cross-platform-lock-strategy.md
+- internal/git/mirror.go
+- internal/git/mirror_lock_unix.go
+- internal/git/mirror_lock_windows.go
+- internal/git/mirror_test.go
+- internal/git/mirror_lock_test_unix_test.go
+- internal/git/mirror_lock_test_windows_test.go
+
+## Change Log
+
+- 2026-03-05: Implemented cross-platform mirror lock abstraction with Unix and Windows implementations; updated lock contention tests for platform-safe execution and verified Windows build/test compilation expectations.

@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"syscall"
 	"testing"
 	"time"
 )
@@ -166,10 +165,11 @@ func TestEnsureMirrorTimesOutWhenLockHeld(t *testing.T) {
 	}
 	defer lockFile.Close()
 
-	if err := syscall.Flock(int(lockFile.Fd()), syscall.LOCK_EX); err != nil {
+	unlock, err := holdTestLock(lockFile)
+	if err != nil {
 		t.Fatalf("failed to hold lock for timeout test: %v", err)
 	}
-	defer syscall.Flock(int(lockFile.Fd()), syscall.LOCK_UN)
+	defer unlock()
 
 	_, err = service.EnsureMirrorWithOptions(context.Background(), "https://example.test/org/repo", EnsureOptions{LockTimeout: 300 * time.Millisecond})
 	if err == nil {
@@ -202,10 +202,11 @@ func TestEnsureMirrorForceBypassesHeldLock(t *testing.T) {
 	}
 	defer lockFile.Close()
 
-	if err := syscall.Flock(int(lockFile.Fd()), syscall.LOCK_EX); err != nil {
+	unlock, err := holdTestLock(lockFile)
+	if err != nil {
 		t.Fatalf("failed to hold lock for force test: %v", err)
 	}
-	defer syscall.Flock(int(lockFile.Fd()), syscall.LOCK_UN)
+	defer unlock()
 
 	_, err = service.EnsureMirrorWithOptions(context.Background(), "https://example.test/org/repo", EnsureOptions{LockTimeout: 100 * time.Millisecond, ForceLock: true})
 	if err != nil {
