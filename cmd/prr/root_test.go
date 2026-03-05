@@ -17,7 +17,6 @@ func TestPlaceholderCommandsRegistered(t *testing.T) {
 		"checkout": false,
 		"render":   false,
 		"review":   false,
-		"publish":  false,
 		"version":  false,
 	}
 
@@ -30,6 +29,20 @@ func TestPlaceholderCommandsRegistered(t *testing.T) {
 	for name, found := range expected {
 		if !found {
 			t.Fatalf("expected command %q to be registered", name)
+		}
+	}
+}
+
+func TestRootCommandDoesNotExposeInternalComposableCommands(t *testing.T) {
+	blocked := map[string]bool{
+		"bundle":  true,
+		"diff":    true,
+		"publish": true,
+	}
+
+	for _, cmd := range rootCmd.Commands() {
+		if blocked[cmd.Name()] {
+			t.Fatalf("did not expect internal command %q to be exposed on root", cmd.Name())
 		}
 	}
 }

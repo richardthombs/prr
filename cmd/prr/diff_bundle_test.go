@@ -41,12 +41,11 @@ func TestDiffCommandEmitsJSONFromStdinWorkDir(t *testing.T) {
 	stdin := bytes.NewBufferString(`{"prId":12,"repoUrl":"https://github.com/acme/repo","remote":"origin","provider":"github","bareDir":"/tmp/bare","mergeRef":"refs/prr/pull/12/merge","workDir":"/tmp/work/12"}`)
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
-	rootCmd.SetIn(stdin)
-	rootCmd.SetOut(stdout)
-	rootCmd.SetErr(stderr)
-	rootCmd.SetArgs([]string{"diff"})
+	diffCmd.SetIn(stdin)
+	diffCmd.SetOut(stdout)
+	diffCmd.SetErr(stderr)
 
-	if err := Execute(); err != nil {
+	if err := diffCmd.RunE(diffCmd, nil); err != nil {
 		t.Fatalf("expected diff command to succeed, got %v", err)
 	}
 
@@ -84,12 +83,17 @@ func TestDiffCommandWhatIfLogsAndSkipsExecution(t *testing.T) {
 	stdin := bytes.NewBufferString(`{"workDir":"/tmp/work/99"}`)
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
-	rootCmd.SetIn(stdin)
-	rootCmd.SetOut(stdout)
-	rootCmd.SetErr(stderr)
-	rootCmd.SetArgs([]string{"diff", "--what-if", "--verbose"})
+	diffCmd.SetIn(stdin)
+	diffCmd.SetOut(stdout)
+	diffCmd.SetErr(stderr)
+	if err := diffCmd.Flags().Set("what-if", "true"); err != nil {
+		t.Fatalf("failed setting diff --what-if: %v", err)
+	}
+	if err := diffCmd.Flags().Set("verbose", "true"); err != nil {
+		t.Fatalf("failed setting diff --verbose: %v", err)
+	}
 
-	if err := Execute(); err != nil {
+	if err := diffCmd.RunE(diffCmd, nil); err != nil {
 		t.Fatalf("expected diff what-if command to succeed, got %v", err)
 	}
 
@@ -103,12 +107,11 @@ func TestBundleCommandBuildsV1Payload(t *testing.T) {
 
 	stdin := bytes.NewBufferString(`{"prId":12,"repoUrl":"https://github.com/acme/repo","remote":"origin","provider":"github","mergeRef":"refs/prr/pull/12/merge","range":"HEAD^1..HEAD","files":["a.txt"],"stat":"1 file changed","patch":"diff --git a/a.txt b/a.txt"}`)
 	stdout := &bytes.Buffer{}
-	rootCmd.SetIn(stdin)
-	rootCmd.SetOut(stdout)
-	rootCmd.SetErr(&bytes.Buffer{})
-	rootCmd.SetArgs([]string{"bundle"})
+	bundleCmd.SetIn(stdin)
+	bundleCmd.SetOut(stdout)
+	bundleCmd.SetErr(&bytes.Buffer{})
 
-	if err := Execute(); err != nil {
+	if err := bundleCmd.RunE(bundleCmd, nil); err != nil {
 		t.Fatalf("expected bundle command to succeed, got %v", err)
 	}
 
@@ -131,12 +134,17 @@ func TestBundleCommandWhatIfAndVerboseEmitDiagnostics(t *testing.T) {
 	stdin := bytes.NewBufferString(`{"range":"HEAD^1..HEAD","files":["a.txt"],"stat":"1 file changed","patch":"diff --git"}`)
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
-	rootCmd.SetIn(stdin)
-	rootCmd.SetOut(stdout)
-	rootCmd.SetErr(stderr)
-	rootCmd.SetArgs([]string{"bundle", "--what-if", "--verbose"})
+	bundleCmd.SetIn(stdin)
+	bundleCmd.SetOut(stdout)
+	bundleCmd.SetErr(stderr)
+	if err := bundleCmd.Flags().Set("what-if", "true"); err != nil {
+		t.Fatalf("failed setting bundle --what-if: %v", err)
+	}
+	if err := bundleCmd.Flags().Set("verbose", "true"); err != nil {
+		t.Fatalf("failed setting bundle --verbose: %v", err)
+	}
 
-	if err := Execute(); err != nil {
+	if err := bundleCmd.RunE(bundleCmd, nil); err != nil {
 		t.Fatalf("expected bundle what-if command to succeed, got %v", err)
 	}
 
@@ -152,12 +160,14 @@ func TestBundleCommandFailsWhenLimitExceeded(t *testing.T) {
 	resetBundleFlagState(t)
 
 	stdin := bytes.NewBufferString(`{"range":"HEAD^1..HEAD","files":["a.txt","b.txt"],"stat":"2 files changed","patch":"diff --git"}`)
-	rootCmd.SetIn(stdin)
-	rootCmd.SetOut(&bytes.Buffer{})
-	rootCmd.SetErr(&bytes.Buffer{})
-	rootCmd.SetArgs([]string{"bundle", "--max-files", "1"})
+	bundleCmd.SetIn(stdin)
+	bundleCmd.SetOut(&bytes.Buffer{})
+	bundleCmd.SetErr(&bytes.Buffer{})
+	if err := bundleCmd.Flags().Set("max-files", "1"); err != nil {
+		t.Fatalf("failed setting bundle --max-files: %v", err)
+	}
 
-	err := Execute()
+	err := bundleCmd.RunE(bundleCmd, nil)
 	if err == nil {
 		t.Fatalf("expected bundle command to fail on changed file limit")
 	}

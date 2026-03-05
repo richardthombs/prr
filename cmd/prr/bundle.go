@@ -12,7 +12,6 @@ import (
 )
 
 func init() {
-	rootCmd.AddCommand(bundleCmd)
 	bundleCmd.Flags().Bool("verbose", false, "Emit progress logs to stderr")
 	bundleCmd.Flags().Bool("what-if", false, "Show actions that would be executed without side effects")
 	bundleCmd.Flags().Int("max-patch-bytes", 0, "Maximum allowed patch size in bytes (0 disables limit)")

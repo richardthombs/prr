@@ -13,7 +13,6 @@ import (
 )
 
 func init() {
-	rootCmd.AddCommand(diffCmd)
 	diffCmd.Flags().String("work-dir", "", "Path to isolated review worktree")
 	diffCmd.Flags().Bool("verbose", false, "Emit progress logs to stderr")
 	diffCmd.Flags().Bool("what-if", false, "Show commands that would be executed without running them")
