@@ -9,13 +9,15 @@ type Class string
 const (
 	ClassConfig   Class = "CONFIG_INVALID"
 	ClassProvider Class = "PROVIDER_RESOLUTION"
+	ClassLimit    Class = "LIMIT_EXCEEDED"
 	ClassRuntime  Class = "RUNTIME_FAILURE"
 )
 
 const (
 	exitConfig = 2
 	exitAPI    = 3
-	exitRun    = 4
+	exitLimit  = 4
+	exitRun    = 5
 )
 
 type AppError struct {
@@ -48,6 +50,10 @@ func WrapRuntime(message string, cause error) error {
 	return &AppError{Class: ClassRuntime, Message: message, Cause: cause}
 }
 
+func WrapLimit(message string, cause error) error {
+	return &AppError{Class: ClassLimit, Message: message, Cause: cause}
+}
+
 func ExitCode(err error) int {
 	if err == nil {
 		return 0
@@ -63,6 +69,8 @@ func ExitCode(err error) int {
 		return exitConfig
 	case ClassProvider:
 		return exitAPI
+	case ClassLimit:
+		return exitLimit
 	default:
 		return exitRun
 	}

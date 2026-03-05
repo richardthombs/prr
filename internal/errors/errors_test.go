@@ -14,8 +14,9 @@ func TestExitCodeMapping(t *testing.T) {
 		{name: "nil", err: nil, want: 0},
 		{name: "config", err: WrapConfig("bad config", nil), want: 2},
 		{name: "provider", err: WrapProvider("provider failed", nil), want: 3},
-		{name: "runtime", err: WrapRuntime("runtime failed", nil), want: 4},
-		{name: "unknown", err: errors.New("unknown"), want: 4},
+			{name: "limit", err: WrapLimit("limit exceeded", nil), want: 4},
+			{name: "runtime", err: WrapRuntime("runtime failed", nil), want: 5},
+			{name: "unknown", err: errors.New("unknown"), want: 5},
 	}
 
 	for _, testCase := range tests {

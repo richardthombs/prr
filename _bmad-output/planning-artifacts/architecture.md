@@ -58,6 +58,7 @@ Focused v1 product scope with moderate implementation complexity due to Git/prov
 
 - Requires provider merge snapshot refs; missing merge refs must fail fast with actionable diagnostics.
 - Uses cached bare mirrors plus detached worktrees; architecture must enforce lock-safe concurrent access.
+- Runtime and command behaviour must support macOS, Linux, and Windows with equivalent contracts.
 - Must apply configurable safety limits (patch bytes, changed files) before review-engine invocation.
 - Must preserve predictable output contracts (Markdown default + structured JSON mode).
 - Must support optional publish step without coupling core review flow to a single provider implementation.
@@ -173,6 +174,7 @@ Not applicable (CLI product). Output rendering uses Markdown formatter + JSON se
 
 - **Build/release:** Single static CLI binary distribution per target OS/arch.
 - **CI baseline:** lint + unit tests + integration tests (Git/provider contract focus) + smoke CLI run.
+- **Cross-platform verification:** run build/test/smoke matrix across macOS, Linux, and Windows.
 - **Runtime target:** Local developer machine execution (no mandatory hosted runtime for MVP).
 - **Monitoring/diagnostics:** Stage-level event logs and debug mode with per-run trace IDs.
 

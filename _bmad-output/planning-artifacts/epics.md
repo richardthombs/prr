@@ -366,6 +366,81 @@ So that review execution, output rendering, and optional publication are composa
 **Then** PRR prints external commands it would execute
 **And** performs no external command execution.
 
+### Story 1.10: Replace Unix-Only Mirror Locking with Cross-Platform Lock Strategy
+
+**FRs:** FR7
+
+As Richard,
+I want mirror-update locking to work on macOS, Linux, and Windows,
+So that concurrent review safety is preserved regardless of host OS.
+
+**Acceptance Criteria:**
+
+**Given** PRR runs on Windows
+**When** mirror locking is compiled and executed
+**Then** PRR uses a supported lock implementation (no Unix-only `syscall.Flock` dependency)
+**And** lock acquire/release semantics remain equivalent to macOS/Linux behaviour.
+
+**Given** lock contention on any supported OS
+**When** a run waits for lock acquisition
+**Then** timeout and `--force` bypass behaviour remain consistent
+**And** lock timeout failures return a stable runtime error class.
+
+**Given** cross-platform unit tests
+**When** lock tests run on macOS, Linux, and Windows
+**Then** tests verify lock contention, timeout, and force-bypass behaviour
+**And** do not rely on OS-specific syscall APIs in shared test files.
+
+### Story 1.11: Normalise Cross-Platform Path and Test Contracts
+
+**FRs:** FR2, FR28
+
+As Richard,
+I want path handling and command contracts to be OS-agnostic,
+So that PRR behaves consistently with Windows path separators and shell environments.
+
+**Acceptance Criteria:**
+
+**Given** cache, mirror, and worktree paths
+**When** PRR resolves and emits filesystem locations
+**Then** paths are created using platform-safe path APIs
+**And** JSON payload fields remain deterministic and valid on macOS, Linux, and Windows.
+
+**Given** unit tests for mirror/worktree path behaviour
+**When** tests run on Windows
+**Then** assertions avoid hard-coded `/tmp` and `/` separator assumptions
+**And** use `filepath`-safe expectations to validate deterministic path segments.
+
+**Given** user-facing examples and diagnostics
+**When** commands/logs are reviewed across platforms
+**Then** examples avoid Unix-only filesystem assumptions
+**And** command diagnostics remain script-compatible for automation.
+
+### Story 1.12: Add Cross-OS Build and Smoke Verification for CLI Baseline
+
+**FRs:** FR1, FR28
+
+As Richard,
+I want automated build/smoke verification across macOS, Linux, and Windows,
+So that CLI entry and composable command contracts are validated before release.
+
+**Acceptance Criteria:**
+
+**Given** CI build verification
+**When** pull requests are validated
+**Then** `go build ./...` and `go test ./...` run in a matrix for macOS, Linux, and Windows
+**And** failures are reported per OS target.
+
+**Given** the produced CLI binary per OS
+**When** smoke checks run
+**Then** `prr --help`, `prr version`, and one `--what-if` composable command path succeed
+**And** stdout/stderr contracts remain stable for scripts.
+
+**Given** local developer workflows
+**When** contributors run documented build/test commands
+**Then** instructions use cross-platform Go commands as the source of truth
+**And** Unix-only helper commands are marked optional.
+
 ## Epic 2: Safe Repository Snapshot and Isolated Review Workspace
 
 Richard can run reviews against an isolated merge snapshot with mirror/worktree lifecycle safety and zero interference with active local work.

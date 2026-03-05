@@ -216,3 +216,28 @@ Rationale: Keeps architecture aligned with revised MVP command requirements with
   - Product Owner / Scrum Master for backlog and sprint planning alignment.
   - Development workflow for implementation of stories 1.5–1.9.
   - Architecture advisory validation for command-boundary consistency.
+
+---
+
+## Addendum — 2026-03-05 (Cross-Platform Story Expansion)
+
+### Summary
+
+Following cross-platform codebase review (macOS, Linux, Windows), Epic 1 is expanded with three additional stories to close portability gaps discovered in locking, path/test contracts, and CI verification.
+
+### Approved Story Additions
+
+- **Story 1.10:** Replace Unix-only mirror locking with a cross-platform lock strategy.
+- **Story 1.11:** Normalise cross-platform path and test contracts.
+- **Story 1.12:** Add cross-OS build and smoke verification for CLI baseline.
+
+### Impact
+
+- Epic ordering remains unchanged; additions are still within Epic 1.
+- Primary affected artefacts: `epics.md`, `prd.md`, `architecture.md`, `implementation-readiness-report-2026-03-04.md`, `validation-report-2026-03-04.md`, and `implementation-artifacts/sprint-status.yaml`.
+- Implementation tracking now includes ready-for-dev placeholders for stories 1.10–1.12.
+
+### Handoff Delta
+
+- **Development Team:** Prioritise Story 1.10 before wider mirror-concurrency work to unblock Windows support.
+- **QA/Validation:** Re-run cross-platform regression coverage after stories 1.10–1.12 are implemented.

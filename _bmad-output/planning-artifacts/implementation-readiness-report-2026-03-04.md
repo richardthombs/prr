@@ -98,13 +98,14 @@ Total NFRs: 17
 
 ### Additional Requirements
 
-- MVP scope remains intentionally narrow around a single review command flow.
+- MVP scope remains intentionally narrow around a single review workflow, with explicit composable command surfaces.
 - Merge-ref availability is a hard dependency and must fail with explicit guidance when absent.
 - Deterministic diff generation semantics (`HEAD^1..HEAD`) are foundational to trust.
 - Safety limits for patch bytes and file counts are required before review engine invocation.
 - Output modes must support both human-readable Markdown and machine-friendly JSON.
 - Configuration precedence and validation behaviour are explicit product requirements.
 - Concurrency-safe mirror locking and stage-level observability are required operational constraints.
+- Cross-platform operation on macOS, Linux, and Windows is required for runtime behaviour, test contracts, and build verification.
 
 ### PRD Completeness Assessment
 
@@ -257,3 +258,9 @@ This assessment identified 4 issues across 3 categories at assessment time. Two 
 
 - Assessed on: 2026-03-04
 - Assessor: GitHub Copilot (BMAD implementation-readiness workflow)
+
+## Addendum — 2026-03-05
+
+- Epic 1 was expanded with Stories 1.10–1.12 to address cross-platform readiness gaps discovered after the original assessment.
+- The readiness status remains **READY WITH MINOR IMPROVEMENTS**, with cross-platform acceptance now explicitly tracked through the new stories.
+- No epic resequencing is required; however, Story 1.10 is a recommended prerequisite for reliable Windows support.

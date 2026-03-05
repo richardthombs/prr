@@ -24,6 +24,14 @@ PRR is a CLI tool that automates pull request review from a single command by cr
   Emits a single JSON payload including `prId`, `repoUrl`, `remote`, `provider`, `bareDir`, `mergeRef`, `workDir`, `keep`, and `cleanup`.
   Supports Azure DevOps and GitHub PR URL formats.
 
+- `prr diff [--work-dir <path>] [--verbose] [--what-if]`
+  Generate deterministic diff outputs from `HEAD^1..HEAD` in the isolated worktree and emit JSON with `files`, `stat`, and `patch`.
+  Accepts stdin JSON (for example from `checkout`) and falls back to `workDir` from that payload when `--work-dir` is omitted.
+
+- `prr bundle [--max-patch-bytes <bytes>] [--max-files <count>] [--verbose] [--what-if]`
+  Build and validate a v1 review bundle from `diff` JSON on stdin.
+  Enforces optional input-size limits with explicit diagnostics when limits are exceeded.
+
 - `prr review <PR_ID> --max-patch-bytes <bytes> --max-files <count>`  
   Override safety limits for patch size and changed file count.
 

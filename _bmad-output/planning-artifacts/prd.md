@@ -69,6 +69,7 @@ This project is intentionally personal and non-commercial: success is measured b
 - Deterministic diff generation using merge-based snapshot and isolated worktree.
 - Zero interference with local repo state across runs.
 - Clear failure modes for missing merge refs, limit exceedance, and provider errors.
+- Equivalent command/runtime behaviour across macOS, Linux, and Windows.
 
 ### Measurable Outcomes
 
@@ -317,3 +318,4 @@ The CLI should be structured around deterministic input-generation stages: PR re
 - NFR15: PRR must emit stage-level diagnostics sufficient to troubleshoot failures without manual Git forensics in most cases.
 - NFR16: Configuration validation errors must identify offending fields and expected value format.
 - NFR17: Internal module boundaries (provider, git workspace, bundle, engine, renderer) must remain separable to enable incremental changes without full rewrites.
+- NFR18: PRR must build, test, and execute baseline CLI smoke flows on macOS, Linux, and Windows with equivalent command and output contracts.

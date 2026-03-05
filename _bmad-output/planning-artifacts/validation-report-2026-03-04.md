@@ -36,6 +36,12 @@ overallStatus: 'Warning'
 
 [Findings will be appended as validation progresses]
 
+### Post-Validation Change Notice (2026-03-05)
+
+- Epic 1 planning was subsequently expanded with cross-platform Stories 1.10, 1.11, and 1.12.
+- This report remains valid for the 2026-03-04 PRD baseline but does not score the newly added cross-platform implementation stories.
+- A targeted follow-up validation pass should be run after PRD/epics deltas are implemented.
+
 ## Format Detection
 
 **PRD Structure:**
