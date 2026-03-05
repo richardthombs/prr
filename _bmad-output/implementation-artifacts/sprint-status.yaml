@@ -48,8 +48,9 @@ development_status:
   1-5-implement-resolve-command-contract: done
   1-6-implement-mirror-ensure-and-prref-fetch-commands: done
   1-7-implement-worktree-add-command-with-cleanup-keep-compatibility: done
-  1-8-implement-diff-and-bundle-composable-commands: review
-  1-9-implement-review-engine-render-and-publish-composable-commands: ready-for-dev
+  1-8-implement-internal-diff-and-bundle-stages: done
+  1-9-implement-review-command-json-output-contract: ready-for-dev
+  1-9b-implement-render-command-for-json-to-markdown: ready-for-dev
   1-10-replace-unix-only-mirror-locking-with-cross-platform-lock-strategy: ready-for-dev
   1-11-normalise-cross-platform-path-and-test-contracts: ready-for-dev
   1-12-add-cross-os-build-and-smoke-verification-for-cli-baseline: ready-for-dev

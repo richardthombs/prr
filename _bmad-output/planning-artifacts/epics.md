@@ -121,7 +121,7 @@ FR30: Epic 1 - Configure defaults with per-run override controls
 
 ## Epic List
 
-### Epic 1: CLI Setup, Configuration, and Review Invocation
+### Epic 1: CLI Setup, Configuration, and Unified Review Orchestration
 Richard can initialise PRR, run a review command with the correct PR context, and control defaults/overrides for predictable execution.
 **FRs covered:** FR1, FR2, FR3, FR4, FR30
 
@@ -141,9 +141,9 @@ Richard can submit review inputs to a configured engine and receive structured o
 Richard can consume Markdown/JSON outputs, optionally publish results, and integrate PRR into scripts with stable signalling and diagnostics.
 **FRs covered:** FR25, FR26, FR27, FR28, FR29
 
-## Epic 1: CLI Setup, Configuration, and Review Invocation
+## Epic 1: CLI Setup, Configuration, and Unified Review Orchestration
 
-Richard can initialise PRR, run the primary review flow, and execute MVP composable pipeline commands (`resolve`, `mirror ensure`, `prref fetch`, `worktree add`, `diff`, `bundle`, `review-engine`, `render`, `publish`) with predictable contracts and overrides.
+Richard can initialise PRR, run the primary review flow with a single `review` command that orchestrates internal stages, and use `render` to convert review JSON into Markdown with predictable contracts and overrides.
 
 ### Story 1.1: Initialise Cobra CLI Project Skeleton
 
@@ -225,19 +225,19 @@ So that behaviour is predictable and tunable per run.
 **Then** PRR fails fast with field-specific validation errors
 **And** returns a stable configuration error class exit code.
 
-### Story 1.5: Implement Resolve Command Contract
+### Story 1.5: Implement Internal Resolve Stage Contract
 
 **FRs:** FR1, FR3, FR4
 
 As Richard,
-I want `prr resolve <PR_URL>` to emit deterministic PR reference context,
-So that I can script and verify context resolution independently of the full review flow.
+I want deterministic PR reference resolution as an internal review stage,
+So that `prr review` can reliably prepare context without requiring a separate user-facing resolve command.
 
 **Acceptance Criteria:**
 
-**Given** a valid PR URL and resolvable context
-**When** I run `prr resolve <PR_URL>`
-**Then** PRR emits a stable JSON `PRRef` payload
+**Given** a valid PR identifier and resolvable context
+**When** I run `prr review <PR_ID>`
+**Then** PRR resolves and validates a stable internal `PRRef` payload
 **And** supports equivalent override flags and provider auto-detection for supported URL formats.
 
 **Given** missing or invalid context inputs
@@ -245,25 +245,25 @@ So that I can script and verify context resolution independently of the full rev
 **Then** PRR returns actionable diagnostics
 **And** exits with a stable error-class code.
 
-### Story 1.6: Implement Mirror Ensure and PRRef Fetch Commands
+### Story 1.6: Implement Internal Mirror Ensure and PRRef Fetch Stages
 
 **FRs:** FR5, FR6, FR8, FR9
 
 As Richard,
-I want `prr mirror ensure` and `prr prref fetch` commands,
-So that mirror lifecycle and merge-ref acquisition are composable and testable.
+I want mirror lifecycle and merge-ref acquisition implemented as internal stages,
+So that `prr review` can execute these steps deterministically without separate user-facing commands.
 
 **Acceptance Criteria:**
 
 **Given** repo context input
-**When** I run `prr mirror ensure`
+**When** I run `prr review <PR_ID>`
 **Then** PRR creates or updates the deterministic mirror location
-**And** emits JSON including `bareDir`.
+**And** carries `bareDir` through internal stage context.
 
 **Given** valid PR context and mirror state
-**When** I run `prr prref fetch`
+**When** the fetch stage executes inside `prr review`
 **Then** PRR fetches merge ref into `refs/prr/pull/<PR_ID>/merge`
-**And** emits JSON including resolved `mergeRef`.
+**And** carries resolved `mergeRef` through internal stage context.
 
 **Given** `--verbose` is enabled
 **When** these commands invoke external commands
@@ -275,19 +275,19 @@ So that mirror lifecycle and merge-ref acquisition are composable and testable.
 **Then** PRR prints external commands it would execute
 **And** performs no external command execution.
 
-### Story 1.7: Implement Worktree Add Command with Cleanup/Keep Compatibility
+### Story 1.7: Implement Internal Worktree Stage with Cleanup/Keep Compatibility
 
 **FRs:** FR10, FR11, FR12, FR13
 
 As Richard,
-I want `prr worktree add` to create isolated review worktrees,
-So that workspace lifecycle can be controlled independently and safely.
+I want `prr review` to create isolated review worktrees via an internal stage,
+So that workspace lifecycle remains safe while keeping the command surface minimal.
 
 **Acceptance Criteria:**
 
 **Given** a valid mirror and merge ref
-**When** I run `prr worktree add`
-**Then** PRR creates a detached isolated worktree and emits `workDir`
+**When** I run `prr review <PR_ID>`
+**Then** PRR creates a detached isolated worktree and records `workDir` in stage context
 **And** no writes are performed in the active working copy.
 
 **Given** default cleanup behaviour and `--keep` override
@@ -303,24 +303,24 @@ So that workspace lifecycle can be controlled independently and safely.
 **Then** PRR prints external commands it would execute
 **And** performs no external command execution.
 
-### Story 1.8: Implement Diff and Bundle Composable Commands
+### Story 1.8: Implement Internal Diff and Bundle Stages
 
 **FRs:** FR14, FR15, FR16, FR17, FR18, FR19, FR20
 
 As Richard,
-I want `prr diff` and `prr bundle` commands,
-So that deterministic review inputs can be generated and validated in composable stages.
+I want deterministic diff and bundle preparation stages to run within `prr review`,
+So that review inputs are generated and validated end-to-end from one command.
 
 **Acceptance Criteria:**
 
 **Given** a valid worktree
-**When** I run `prr diff`
-**Then** PRR emits deterministic stat/files/patch outputs
+**When** `prr review` executes diff processing
+**Then** PRR produces deterministic stat/files/patch outputs
 **And** output contracts are JSON-compatible.
 
 **Given** valid diff outputs
-**When** I run `prr bundle`
-**Then** PRR emits a validated v1 bundle payload
+**When** `prr review` executes bundle preparation
+**Then** PRR produces a validated v1 bundle payload
 **And** enforces configured size limits with explicit failure diagnostics.
 
 **Given** `--verbose` is enabled
@@ -332,30 +332,30 @@ So that deterministic review inputs can be generated and validated in composable
 **Then** PRR prints external commands it would execute
 **And** performs no external command execution.
 
-### Story 1.9: Implement Review-Engine, Render, and Publish Composable Commands
+### Story 1.9: Implement Unified Review JSON Output and Render Command
 
 **FRs:** FR21, FR22, FR23, FR24, FR25, FR26, FR27, FR28, FR29
 
 As Richard,
-I want `prr review-engine`, `prr render`, and `prr publish` commands,
-So that review execution, output rendering, and optional publication are composable for scripting and diagnostics.
+I want `prr review` to emit stable structured JSON and `prr render` to convert that JSON to Markdown,
+So that review execution and presentation are simple, scriptable, and predictable.
 
 **Acceptance Criteria:**
 
 **Given** a valid review bundle
-**When** I run `prr review-engine`
+**When** I run `prr review <PR_ID>`
 **Then** PRR emits structured review JSON with stable per-run finding references
 **And** engine failures return actionable, classed errors.
 
 **Given** a valid review JSON payload
 **When** I run `prr render`
-**Then** PRR outputs Markdown by default and JSON when requested
+**Then** PRR outputs Markdown deterministically from the JSON payload
 **And** channel/exit behaviour remains automation-stable.
 
-**Given** publish mode and provider support
-**When** I run `prr publish`
-**Then** PRR posts rendered review output to the PR
-**And** reports publication outcome explicitly.
+**Given** publish functionality is required later
+**When** scope is revisited post-MVP
+**Then** publication is designed as an optional extension
+**And** does not expand the MVP command surface.
 
 **Given** `--verbose` is enabled
 **When** these commands invoke external commands
