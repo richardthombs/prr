@@ -2,5 +2,6 @@ bin/
 .dist/
 .coverage/
 *.test
+*.test.exe
 dist/
 prr
