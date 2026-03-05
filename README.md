@@ -13,25 +13,25 @@ These Go commands are the canonical contributor workflow on macOS, Linux, and Wi
 
 ## Commands
 
-- `prr review [<PR_ID>|<PR_URL>]`  
+- `prr review <PR_URL>`  
   Run an end-to-end review for a pull request using either numeric ID or full PR URL input.
+
+- `prr review <PR_URL> --keep`  
+  Keep the isolated review worktree after the run for inspection.
 
 - `prr checkout <PR_URL> | prr review`  
   Pipe checkout JSON directly into review so `prId`, `repoUrl`, `provider`, and `remote` are inferred from stdin.
 
-- `prr review [<PR_ID>|<PR_URL>] --keep`  
-  Keep the isolated review worktree after the run for inspection.
-
-- `prr review <PR_ID> --provider <provider> --repo <repoUrl>`  
-  Optional explicit overrides when ID-only input is used and automatic context is not sufficient.
-
-- `prr checkout <PR_URL> [--provider <provider>] [--repo <repoUrl>] [--remote <name>] [--keep] [--verbose] [--what-if]`
+- `prr checkout <PR_URL> [--verbose] [--what-if]`
   Resolve PR context, ensure/update mirror, fetch merge ref, and prepare/reset the isolated worktree in one command.
   Emits a single JSON payload including `prId`, `repoUrl`, `remote`, `provider`, `bareDir`, `mergeRef`, `workDir`, `keep`, and `cleanup`.
   Supports Azure DevOps and GitHub PR URL formats.
 
 - `prr review [<PR_ID>|<PR_URL>] --max-patch-bytes <bytes> --max-files <count>`  
   Override safety limits for patch size and changed file count.
+
+- `prr review <PR_URL> --model <model_name>`
+  Select the Copilot model for this review run; PRR passes this through to Copilot as `--model`.
 
 - `prr --help`  
   Show CLI help and available options.

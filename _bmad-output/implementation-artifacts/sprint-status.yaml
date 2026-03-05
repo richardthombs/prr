@@ -49,12 +49,12 @@ development_status:
   1-6-implement-mirror-ensure-and-prref-fetch-commands: done
   1-7-implement-worktree-add-command-with-cleanup-keep-compatibility: done
   1-8-implement-internal-diff-and-bundle-stages: done
-  1-9-implement-review-command-json-output-contract: done
+  1-9-implement-review-command-json-output-contract: ready-for-dev
   1-9b-implement-render-command-for-json-to-markdown: done
   1-10-replace-unix-only-mirror-locking-with-cross-platform-lock-strategy: done
   1-11-normalise-cross-platform-path-and-test-contracts: done
   1-12-add-cross-os-build-and-smoke-verification-for-cli-baseline: done
-  epic-1-retrospective: optional
+  epic-1-retrospective: done
   epic-2: backlog
   2-1-create-and-maintain-per-repository-bare-mirror-cache: backlog
   2-2-add-lock-safe-mirror-updates-for-concurrent-runs: backlog

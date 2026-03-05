@@ -332,39 +332,68 @@ So that review inputs are generated and validated end-to-end from one command.
 **Then** PRR prints external commands it would execute
 **And** performs no external command execution.
 
-### Story 1.9: Implement Unified Review JSON Output and Render Command
+### Story 1.9: Rework Review Command to Invoke Agent CLI and Emit Renderer-Compatible JSON
 
 **FRs:** FR21, FR22, FR23, FR24, FR25, FR26, FR27, FR28, FR29
 
 As Richard,
-I want `prr review` to emit stable structured JSON and `prr render` to convert that JSON to Markdown,
-So that review execution and presentation are simple, scriptable, and predictable.
+I want `prr review <PR_URL>` to pass deterministic diff JSON plus a review prompt to an agent CLI,
+So that PRR emits structured review JSON that `prr render` can consume directly.
 
 **Acceptance Criteria:**
 
-**Given** a valid review bundle
-**When** I run `prr review <PR_ID>`
-**Then** PRR emits structured review JSON with stable per-run finding references
-**And** engine failures return actionable, classed errors.
+**Given** a valid PR URL input (or equivalent checkout JSON piped from stdin)
+**When** I run `prr review`
+**Then** PRR prepares deterministic review input internally and invokes the GitHub Copilot agent CLI (`copilot`) in non-interactive mode with deterministic prompt + input payload
+**And** prompt submission uses Copilot `-p`
+**And** PRR emits structured review JSON with stable per-run finding references.
 
-**Given** a valid review JSON payload
-**When** I run `prr render`
-**Then** PRR outputs Markdown deterministically from the JSON payload
+**Given** checkout JSON is piped from `prr checkout <PR_URL>`
+**When** I run `prr review` without positional args
+**Then** PRR reads PR context from stdin and skips checkout-stage setup (`resolve`, mirror ensure/fetch, worktree creation)
+**And** proceeds directly with review stages from supplied context.
+
+**Given** malformed, partial, or non-JSON agent output
+**When** `prr review` parses the response
+**Then** PRR fails with actionable diagnostics and stable classed non-zero exit codes
+**And** does not emit ambiguous partial review JSON.
+
+**Given** a successful agent CLI response
+**When** PRR normalises the response
+**Then** output JSON matches renderer requirements (`summary`, `risk`, `findings`, `checklist`)
 **And** channel/exit behaviour remains automation-stable.
 
-**Given** publish functionality is required later
-**When** scope is revisited post-MVP
-**Then** publication is designed as an optional extension
-**And** does not expand the MVP command surface.
+**Given** agent invocation fails (CLI missing, auth/config missing, timeout, non-zero exit)
+**When** `prr review` runs
+**Then** PRR returns classed actionable errors with sanitised diagnostics.
+
+**Given** a checked-out PR worktree is available
+**When** `prr review` invokes the agent CLI
+**Then** the CLI process runs with working directory set to that worktree
+**And** relative repository paths resolve against the reviewed PR state.
 
 **Given** `--verbose` is enabled
-**When** these commands invoke external commands
+**When** `prr review` invokes external commands
 **Then** PRR logs each external command to stderr before execution.
 
 **Given** `--what-if` is enabled
-**When** these commands run
-**Then** PRR prints external commands it would execute
+**When** `prr review` runs
+**Then** PRR prints the command and prompt/input paths it would use
 **And** performs no external command execution.
+
+**Given** review safety options (`--max-patch-bytes`, `--max-files`) and workspace retention (`--keep`)
+**When** `prr review <PR_URL>` runs
+**Then** option handling remains compatible with the README command contract.
+
+**Given** `--model <model_name>` is provided to `prr review`
+**When** PRR invokes Copilot
+**Then** model selection is passed through as Copilot `--model <model_name>`.
+
+**Given** the agent review stage is executed
+**When** PRR invokes the configured CLI command
+**Then** invocation parameters are explicit and deterministic (binary, ordered args, `-p` prompt argument, optional `--model`, `cwd = workDir`, stdin/input mode, timeout)
+**And** the selected `copilot` command/flags variant is pinned and covered by regression tests
+**And** GitHub CLI (`gh`) is not used as the agent execution command in this story.
 
 ### Story 1.10: Replace Unix-Only Mirror Locking with Cross-Platform Lock Strategy
 
