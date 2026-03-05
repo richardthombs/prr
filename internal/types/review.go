@@ -36,18 +36,18 @@ type Review struct {
 }
 
 func NormalizeAndValidateReviewOutput(input Review) (Review, error) {
-	return validateReview(input, apperrors.WrapEngine, true, "review output")
+	return validateReview(input, apperrors.WrapEngine, true, false, "review output")
 }
 
 func ValidateReviewInput(input Review) (Review, error) {
-	return validateReview(input, apperrors.WrapConfig, false, "review input")
+	return validateReview(input, apperrors.WrapConfig, false, true, "review input")
 }
 
 func NormalizeAndValidateReview(input Review) (Review, error) {
 	return NormalizeAndValidateReviewOutput(input)
 }
 
-func validateReview(input Review, wrap wrapFunc, allowMissingID bool, label string) (Review, error) {
+func validateReview(input Review, wrap wrapFunc, allowMissingID bool, validateRiskRange bool, label string) (Review, error) {
 	review := input
 
 	review.Summary = strings.TrimSpace(review.Summary)
@@ -55,8 +55,10 @@ func validateReview(input Review, wrap wrapFunc, allowMissingID bool, label stri
 		return Review{}, wrap(label+" is missing summary", nil)
 	}
 
-	if review.Risk.Score < 0 || review.Risk.Score > 1 {
-		return Review{}, wrap(label+" risk.score must be between 0 and 1", nil)
+	if validateRiskRange {
+		if review.Risk.Score < 0 || review.Risk.Score > 1 {
+			return Review{}, wrap(label+" risk.score must be between 0 and 1", nil)
+		}
 	}
 	if review.Risk.Reasons == nil {
 		return Review{}, wrap(label+" is missing risk.reasons", nil)

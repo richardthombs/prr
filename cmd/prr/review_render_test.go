@@ -43,7 +43,9 @@ func TestReviewCommandEmitsStructuredJSONAndKeepsDiagnosticsOffStdout(t *testing
 
 	mirrorServiceFactory = func() *git.Service { return service }
 	reviewEngineFactory = func() engine.ReviewEngine {
-		return engine.NewDefaultAdapter()
+		return reviewEngineFunc(func(_ context.Context, _ engine.ReviewInput) (types.Review, error) {
+			return deterministicReview(), nil
+		})
 	}
 
 	stdout := &bytes.Buffer{}
@@ -108,7 +110,9 @@ func TestReviewCommandWhatIfVerbosePrintsCommandsToStderr(t *testing.T) {
 	service := git.NewServiceWithCacheDir(runner, t.TempDir())
 	mirrorServiceFactory = func() *git.Service { return service }
 	reviewEngineFactory = func() engine.ReviewEngine {
-		return engine.NewDefaultAdapter()
+		return reviewEngineFunc(func(_ context.Context, _ engine.ReviewInput) (types.Review, error) {
+			return deterministicReview(), nil
+		})
 	}
 
 	stdout := &bytes.Buffer{}
@@ -156,7 +160,9 @@ func TestReviewCommandAcceptsPRURLArgument(t *testing.T) {
 	}}, t.TempDir())
 	mirrorServiceFactory = func() *git.Service { return service }
 	reviewEngineFactory = func() engine.ReviewEngine {
-		return engine.NewDefaultAdapter()
+		return reviewEngineFunc(func(_ context.Context, _ engine.ReviewInput) (types.Review, error) {
+			return deterministicReview(), nil
+		})
 	}
 
 	stdout := &bytes.Buffer{}
@@ -203,7 +209,9 @@ func TestReviewCommandAcceptsPipedCheckoutJSONWithoutArgs(t *testing.T) {
 	}}, t.TempDir())
 	mirrorServiceFactory = func() *git.Service { return service }
 	reviewEngineFactory = func() engine.ReviewEngine {
-		return engine.NewDefaultAdapter()
+		return reviewEngineFunc(func(_ context.Context, _ engine.ReviewInput) (types.Review, error) {
+			return deterministicReview(), nil
+		})
 	}
 
 	stdin := bytes.NewBufferString(`{"prId":73,"repoUrl":"https://github.com/acme/repo","provider":"github","remote":"origin"}`)
@@ -223,6 +231,109 @@ func TestReviewCommandAcceptsPipedCheckoutJSONWithoutArgs(t *testing.T) {
 	}
 	if payload["summary"] == "" {
 		t.Fatalf("expected summary in review JSON")
+	}
+}
+
+func TestReviewCommandBypassesSetupWithAuthoritativeCheckoutJSON(t *testing.T) {
+	resetReviewFlagState(t)
+
+	originalMirrorFactory := mirrorServiceFactory
+	originalEngineFactory := reviewEngineFactory
+	t.Cleanup(func() {
+		mirrorServiceFactory = originalMirrorFactory
+		reviewEngineFactory = originalEngineFactory
+	})
+
+	runner := stubRunner{runFunc: func(_ context.Context, _ string, args ...string) (string, error) {
+		joined := strings.Join(args, " ")
+		if strings.Contains(joined, "clone --mirror") || strings.Contains(joined, "fetch origin pull/") || strings.Contains(joined, "worktree add --detach") {
+			t.Fatalf("expected setup stages to be bypassed, got %q", joined)
+		}
+
+		switch {
+		case strings.Contains(joined, "diff --name-only HEAD^1..HEAD"):
+			return "a.txt\n", nil
+		case strings.Contains(joined, "diff --stat HEAD^1..HEAD"):
+			return "1 file changed", nil
+		case strings.Contains(joined, "diff --patch --binary HEAD^1..HEAD"):
+			return "diff --git a/a.txt b/a.txt", nil
+		default:
+			return "", nil
+		}
+	}}
+
+	service := git.NewServiceWithCacheDir(runner, t.TempDir())
+	mirrorServiceFactory = func() *git.Service { return service }
+	reviewEngineFactory = func() engine.ReviewEngine {
+		return reviewEngineFunc(func(_ context.Context, _ engine.ReviewInput) (types.Review, error) {
+			return deterministicReview(), nil
+		})
+	}
+
+	stdin := bytes.NewBufferString(`{"prId":73,"repoUrl":"https://github.com/acme/repo","provider":"github","remote":"origin","bareDir":"/tmp/bare","mergeRef":"refs/prr/pull/73/merge","workDir":"/tmp/worktree","cleanup":false}`)
+	stdout := &bytes.Buffer{}
+	rootCmd.SetIn(stdin)
+	rootCmd.SetOut(stdout)
+	rootCmd.SetErr(&bytes.Buffer{})
+	rootCmd.SetArgs([]string{"review"})
+
+	if err := Execute(); err != nil {
+		t.Fatalf("expected review command with full checkout JSON to succeed, got %v", err)
+	}
+
+	var payload map[string]any
+	if err := json.Unmarshal(bytes.TrimSpace(stdout.Bytes()), &payload); err != nil {
+		t.Fatalf("expected valid review JSON, got %v", err)
+	}
+	if payload["summary"] == "" {
+		t.Fatalf("expected summary in review JSON")
+	}
+}
+
+func TestReviewCommandPassesModelFlagToEngine(t *testing.T) {
+	resetReviewFlagState(t)
+
+	originalMirrorFactory := mirrorServiceFactory
+	originalEngineFactory := reviewEngineFactory
+	t.Cleanup(func() {
+		mirrorServiceFactory = originalMirrorFactory
+		reviewEngineFactory = originalEngineFactory
+	})
+
+	service := git.NewServiceWithCacheDir(stubRunner{runFunc: func(_ context.Context, _ string, args ...string) (string, error) {
+		joined := strings.Join(args, " ")
+		switch {
+		case strings.Contains(joined, "diff --name-only HEAD^1..HEAD"):
+			return "a.txt\n", nil
+		case strings.Contains(joined, "diff --stat HEAD^1..HEAD"):
+			return "1 file changed", nil
+		case strings.Contains(joined, "diff --patch --binary HEAD^1..HEAD"):
+			return "diff --git a/a.txt b/a.txt", nil
+		default:
+			return "", nil
+		}
+	}}, t.TempDir())
+	mirrorServiceFactory = func() *git.Service { return service }
+
+	capturedModel := ""
+	reviewEngineFactory = func() engine.ReviewEngine {
+		return reviewEngineFunc(func(_ context.Context, input engine.ReviewInput) (types.Review, error) {
+			capturedModel = input.Model
+			return deterministicReview(), nil
+		})
+	}
+
+	rootCmd.SetIn(bytes.NewBuffer(nil))
+	rootCmd.SetOut(&bytes.Buffer{})
+	rootCmd.SetErr(&bytes.Buffer{})
+	rootCmd.SetArgs([]string{"review", "42", "--repo", "https://github.com/acme/repo", "--provider", "github", "--model", "gpt-5"})
+
+	if err := Execute(); err != nil {
+		t.Fatalf("expected review command to succeed, got %v", err)
+	}
+
+	if capturedModel != "gpt-5" {
+		t.Fatalf("expected model flag to be passed to engine, got %q", capturedModel)
 	}
 }
 
@@ -252,7 +363,7 @@ func TestReviewCommandClassifiesEngineFailures(t *testing.T) {
 	mirrorServiceFactory = func() *git.Service { return service }
 
 	reviewEngineFactory = func() engine.ReviewEngine {
-		return reviewEngineFunc(func(_ context.Context, _ types.BundleV1) (types.Review, error) {
+		return reviewEngineFunc(func(_ context.Context, _ engine.ReviewInput) (types.Review, error) {
 			return types.Review{}, errors.New("adapter failed")
 		})
 	}
@@ -287,7 +398,7 @@ func TestReviewCommandEmitsDeterministicJSONShape(t *testing.T) {
 	}}
 	mirrorServiceFactory = func() *git.Service { return git.NewServiceWithCacheDir(runner, t.TempDir()) }
 	reviewEngineFactory = func() engine.ReviewEngine {
-		return reviewEngineFunc(func(_ context.Context, _ types.BundleV1) (types.Review, error) {
+		return reviewEngineFunc(func(_ context.Context, _ engine.ReviewInput) (types.Review, error) {
 			return types.Review{
 				Summary: "Deterministic review",
 				Risk: types.Risk{
@@ -349,7 +460,11 @@ func TestReviewOutputCanBePipedIntoRenderDeterministically(t *testing.T) {
 		}
 	}}, t.TempDir())
 	mirrorServiceFactory = func() *git.Service { return service }
-	reviewEngineFactory = func() engine.ReviewEngine { return engine.NewDefaultAdapter() }
+	reviewEngineFactory = func() engine.ReviewEngine {
+		return reviewEngineFunc(func(_ context.Context, _ engine.ReviewInput) (types.Review, error) {
+			return deterministicReview(), nil
+		})
+	}
 
 	reviewStdout := &bytes.Buffer{}
 	rootCmd.SetIn(bytes.NewBuffer(nil))
@@ -534,10 +649,30 @@ func TestRenderCommandVerboseWhatIfDiagnostics(t *testing.T) {
 	}
 }
 
-type reviewEngineFunc func(ctx context.Context, bundle types.BundleV1) (types.Review, error)
+type reviewEngineFunc func(ctx context.Context, input engine.ReviewInput) (types.Review, error)
 
-func (f reviewEngineFunc) Review(ctx context.Context, bundle types.BundleV1) (types.Review, error) {
-	return f(ctx, bundle)
+func (f reviewEngineFunc) Review(ctx context.Context, input engine.ReviewInput) (types.Review, error) {
+	return f(ctx, input)
+}
+
+func deterministicReview() types.Review {
+	return types.Review{
+		Summary: "Deterministic review",
+		Risk: types.Risk{
+			Score:   0.25,
+			Reasons: []string{"Stable fixture"},
+		},
+		Findings: []types.Finding{{
+			ID:         "F001",
+			File:       "a.go",
+			Line:       7,
+			Severity:   "important",
+			Category:   "tests",
+			Message:    "Add coverage",
+			Suggestion: "Add assertions",
+		}},
+		Checklist: []string{"Run CI"},
+	}
 }
 
 func resetReviewFlagState(t *testing.T) {
@@ -555,6 +690,7 @@ func resetReviewFlagState(t *testing.T) {
 		{name: "what-if", value: "false"},
 		{name: "max-patch-bytes", value: "0"},
 		{name: "max-files", value: "0"},
+		{name: "model", value: ""},
 	} {
 		if err := reviewCmd.Flags().Set(flag.name, flag.value); err != nil {
 			t.Fatalf("failed to reset review --%s flag: %v", flag.name, err)

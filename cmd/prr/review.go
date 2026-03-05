@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/url"
 	"strconv"
@@ -27,6 +28,7 @@ func init() {
 	reviewCmd.Flags().Bool("what-if", false, "Show commands that would be executed without running them")
 	reviewCmd.Flags().Int("max-patch-bytes", 0, "Maximum allowed patch size in bytes (0 disables limit)")
 	reviewCmd.Flags().Int("max-files", 0, "Maximum allowed changed file count (0 disables limit)")
+	reviewCmd.Flags().String("model", "", "Copilot model to use for review generation")
 }
 
 var reviewEngineFactory = func() engine.ReviewEngine {
@@ -61,12 +63,6 @@ var reviewCmd = &cobra.Command{
 			arg = strings.TrimSpace(args[0])
 		}
 
-		resolver := provider.NewResolver(provider.NewDefaultProvider())
-		prRef, err := resolveReviewPRRef(context.Background(), resolver, arg, resolveOpts, stdinInput, hasStdinInput)
-		if err != nil {
-			return err
-		}
-
 		keep, err := cmd.Flags().GetBool("keep")
 		if err != nil {
 			return apperrors.WrapRuntime("failed to parse keep flag", err)
@@ -87,6 +83,28 @@ var reviewCmd = &cobra.Command{
 		if err != nil {
 			return apperrors.WrapRuntime("failed to parse max-files flag", err)
 		}
+		model, err := cmd.Flags().GetString("model")
+		if err != nil {
+			return apperrors.WrapRuntime("failed to parse model flag", err)
+		}
+
+		useCheckoutContext := arg == "" && hasAuthoritativeCheckoutContext(stdinInput)
+
+		prRef := types.PRRef{}
+		if useCheckoutContext {
+			prRef = types.PRRef{
+				PRID:     stdinInput.PRID,
+				RepoURL:  strings.TrimSpace(stdinInput.RepoURL),
+				Remote:   strings.TrimSpace(stdinInput.Remote),
+				Provider: strings.TrimSpace(stdinInput.Provider),
+			}
+		} else {
+			resolver := provider.NewResolver(provider.NewDefaultProvider())
+			prRef, err = resolveReviewPRRef(context.Background(), resolver, arg, resolveOpts, stdinInput, hasStdinInput)
+			if err != nil {
+				return err
+			}
+		}
 
 		service := mirrorServiceFactory()
 		commonOpts := git.EnsureOptions{
@@ -97,30 +115,49 @@ var reviewCmd = &cobra.Command{
 			},
 		}
 
-		bareDir, err := service.EnsureMirrorWithOptions(context.Background(), prRef.RepoURL, commonOpts)
-		if err != nil {
-			return err
-		}
-		mergeRef, err := service.FetchPRMergeRefWithOptions(context.Background(), bareDir, prRef.Remote, prRef.PRID, commonOpts)
-		if err != nil {
-			return err
-		}
-		workDir, err := service.ResolveWorktreeDirFromBareDir(bareDir, prRef.PRID)
-		if err != nil {
-			return err
-		}
+		bareDir := strings.TrimSpace(stdinInput.BareDir)
+		mergeRef := strings.TrimSpace(stdinInput.MergeRef)
+		workDir := strings.TrimSpace(stdinInput.WorkDir)
 
-		if err := service.CreateWorktree(context.Background(), bareDir, mergeRef, workDir, commonOpts); err != nil {
-			return err
-		}
+		if useCheckoutContext {
+			if verbose || whatIf {
+				_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "[prr] using checkout JSON context from stdin; skipping resolve/mirror/fetch/worktree setup")
+			}
 
-		if !keep {
-			defer func() {
-				cleanupErr := service.CleanupWorktree(context.Background(), bareDir, workDir, commonOpts)
-				if cleanupErr != nil {
-					_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "[prr] warning: cleanup failed: %v\n", cleanupErr)
-				}
-			}()
+			if stdinInput.Cleanup && !keep {
+				defer func() {
+					cleanupErr := service.CleanupWorktree(context.Background(), bareDir, workDir, commonOpts)
+					if cleanupErr != nil {
+						_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "[prr] warning: cleanup failed: %v\n", cleanupErr)
+					}
+				}()
+			}
+		} else {
+			bareDir, err = service.EnsureMirrorWithOptions(context.Background(), prRef.RepoURL, commonOpts)
+			if err != nil {
+				return err
+			}
+			mergeRef, err = service.FetchPRMergeRefWithOptions(context.Background(), bareDir, prRef.Remote, prRef.PRID, commonOpts)
+			if err != nil {
+				return err
+			}
+			workDir, err = service.ResolveWorktreeDirFromBareDir(bareDir, prRef.PRID)
+			if err != nil {
+				return err
+			}
+
+			if err := service.CreateWorktree(context.Background(), bareDir, mergeRef, workDir, commonOpts); err != nil {
+				return err
+			}
+
+			if !keep {
+				defer func() {
+					cleanupErr := service.CleanupWorktree(context.Background(), bareDir, workDir, commonOpts)
+					if cleanupErr != nil {
+						_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "[prr] warning: cleanup failed: %v\n", cleanupErr)
+					}
+				}()
+			}
 		}
 
 		diffOutput, err := service.DiffContributionWithOptions(context.Background(), workDir, commonOpts)
@@ -156,17 +193,26 @@ var reviewCmd = &cobra.Command{
 			return err
 		}
 
-		reviewOutput, err := reviewEngineFactory().Review(context.Background(), bundlePayload)
+		reviewOutput, err := reviewEngineFactory().Review(context.Background(), engine.ReviewInput{
+			Bundle:  bundlePayload,
+			WorkDir: workDir,
+			Model:   model,
+			Verbose: verbose,
+			WhatIf:  whatIf,
+			Logger: func(format string, args ...any) {
+				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "[prr] "+format+"\n", args...)
+			},
+		})
 		if err != nil {
+			var appErr *apperrors.AppError
+			if errors.As(err, &appErr) {
+				return err
+			}
+
 			return apperrors.WrapEngine("failed to run review engine", err)
 		}
 
-		validatedReview, err := types.NormalizeAndValidateReviewOutput(reviewOutput)
-		if err != nil {
-			return err
-		}
-
-		encoded, err := json.Marshal(validatedReview)
+		encoded, err := json.Marshal(reviewOutput)
 		if err != nil {
 			return apperrors.WrapRuntime("failed to encode review JSON", err)
 		}
@@ -177,6 +223,16 @@ var reviewCmd = &cobra.Command{
 
 		return nil
 	},
+}
+
+func hasAuthoritativeCheckoutContext(input checkoutOutput) bool {
+	return input.PRID > 0 &&
+		strings.TrimSpace(input.RepoURL) != "" &&
+		strings.TrimSpace(input.Remote) != "" &&
+		strings.TrimSpace(input.Provider) != "" &&
+		strings.TrimSpace(input.BareDir) != "" &&
+		strings.TrimSpace(input.MergeRef) != "" &&
+		strings.TrimSpace(input.WorkDir) != ""
 }
 
 func resolveReviewPRRef(
