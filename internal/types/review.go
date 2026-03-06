@@ -36,7 +36,7 @@ type Review struct {
 }
 
 func NormalizeAndValidateReviewOutput(input Review) (Review, error) {
-	return validateReview(input, apperrors.WrapEngine, true, false, "review output")
+	return validateReview(input, apperrors.WrapEngine, true, true, "review output")
 }
 
 func ValidateReviewInput(input Review) (Review, error) {

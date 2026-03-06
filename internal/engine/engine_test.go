@@ -109,6 +109,10 @@ func TestCLIAdapterWhatIfSkipsExecutionAndReturnsStructuredReview(t *testing.T) 
 	if len(logs) == 0 {
 		t.Fatalf("expected diagnostics logs in what-if mode")
 	}
+	joined := strings.Join(logs, "\n")
+	if !strings.Contains(joined, "review engine input envelope") {
+		t.Fatalf("expected what-if log to include envelope details, got %q", joined)
+	}
 }
 
 func TestCLIAdapterParsesMixedTextAndJSONOutput(t *testing.T) {
@@ -131,7 +135,7 @@ func TestCLIAdapterParsesMixedTextAndJSONOutput(t *testing.T) {
 	}
 }
 
-func TestCLIAdapterAcceptsOutOfRangeRiskScoreWhenStructureIsValid(t *testing.T) {
+func TestCLIAdapterRejectsOutOfRangeRiskScore(t *testing.T) {
 	adapter := &CLIAgentAdapter{
 		config: DefaultAgentConfig(),
 		runner: fakeRunner{run: func(_ context.Context, _ string, _ []string, _ string, _ string) (commandResult, error) {
@@ -139,15 +143,44 @@ func TestCLIAdapterAcceptsOutOfRangeRiskScoreWhenStructureIsValid(t *testing.T) 
 		}},
 	}
 
-	review, err := adapter.Review(context.Background(), ReviewInput{
+	_, err := adapter.Review(context.Background(), ReviewInput{
 		Bundle:  types.BundleV1{Version: "v1", Range: "HEAD^1..HEAD", Files: []string{}, Stat: "ok", Patch: "ok"},
 		WorkDir: "/tmp/work",
 	})
-	if err != nil {
-		t.Fatalf("expected success, got %v", err)
+	if err == nil {
+		t.Fatalf("expected risk score validation failure")
 	}
-	if review.Risk.Score != 4 {
-		t.Fatalf("expected out-of-range risk score to be preserved, got %v", review.Risk.Score)
+	if !strings.Contains(err.Error(), "agent output failed review schema validation") {
+		t.Fatalf("expected schema validation classification, got %v", err)
+	}
+}
+
+func TestDefaultAgentConfigHonorsEnvironmentOverrides(t *testing.T) {
+	t.Setenv("PRR_AGENT_COMMAND", "copilot-dev")
+	t.Setenv("PRR_AGENT_ARGS", "--foo --bar")
+	t.Setenv("PRR_AGENT_MODEL_ARG", "--model-name")
+	t.Setenv("PRR_AGENT_INPUT_MODE", "file")
+	t.Setenv("PRR_AGENT_OUTPUT_MODE", "json")
+	t.Setenv("PRR_AGENT_TIMEOUT_SECONDS", "90")
+
+	cfg := DefaultAgentConfig()
+	if cfg.Command != "copilot-dev" {
+		t.Fatalf("expected command override, got %q", cfg.Command)
+	}
+	if strings.Join(cfg.Args, " ") != "--foo --bar" {
+		t.Fatalf("expected args override, got %q", strings.Join(cfg.Args, " "))
+	}
+	if cfg.ModelArg != "--model-name" {
+		t.Fatalf("expected model arg override, got %q", cfg.ModelArg)
+	}
+	if cfg.InputMode != "file" {
+		t.Fatalf("expected input mode override, got %q", cfg.InputMode)
+	}
+	if cfg.OutputMode != "json" {
+		t.Fatalf("expected output mode override, got %q", cfg.OutputMode)
+	}
+	if cfg.TimeoutSeconds != 90 {
+		t.Fatalf("expected timeout override, got %d", cfg.TimeoutSeconds)
 	}
 }
 

@@ -2,8 +2,8 @@ package types
 
 import "testing"
 
-func TestNormalizeAndValidateReviewOutputAllowsRiskScoreOutsideZeroToOne(t *testing.T) {
-	review, err := NormalizeAndValidateReviewOutput(Review{
+func TestNormalizeAndValidateReviewOutputRejectsRiskScoreOutsideZeroToOne(t *testing.T) {
+	_, err := NormalizeAndValidateReviewOutput(Review{
 		Summary: "ok",
 		Risk: Risk{Score: 4, Reasons: []string{"r"}},
 		Findings: []Finding{{
@@ -16,11 +16,8 @@ func TestNormalizeAndValidateReviewOutputAllowsRiskScoreOutsideZeroToOne(t *test
 		}},
 		Checklist: []string{"c"},
 	})
-	if err != nil {
-		t.Fatalf("expected success, got %v", err)
-	}
-	if review.Risk.Score != 4 {
-		t.Fatalf("expected risk score to remain unchanged, got %v", review.Risk.Score)
+	if err == nil {
+		t.Fatalf("expected risk score validation failure")
 	}
 }
 

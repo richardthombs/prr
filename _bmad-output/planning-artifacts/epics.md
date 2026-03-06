@@ -337,7 +337,7 @@ So that review inputs are generated and validated end-to-end from one command.
 **FRs:** FR21, FR22, FR23, FR24, FR25, FR26, FR27, FR28, FR29
 
 As Richard,
-I want `prr review <PR_URL>` to pass deterministic diff JSON plus a review prompt to an agent CLI,
+I want `prr review <PR_URL>` to pass deterministic diff JSON plus deterministic review instructions to an agent CLI,
 So that PRR emits structured review JSON that `prr render` can consume directly.
 
 **Acceptance Criteria:**
@@ -345,7 +345,7 @@ So that PRR emits structured review JSON that `prr render` can consume directly.
 **Given** a valid PR URL input (or equivalent checkout JSON piped from stdin)
 **When** I run `prr review`
 **Then** PRR prepares deterministic review input internally and invokes the GitHub Copilot agent CLI (`copilot`) in non-interactive mode with deterministic prompt + input payload
-**And** prompt submission uses Copilot `-p`
+**And** deterministic instructions plus payload framing are provided via stdin envelope
 **And** PRR emits structured review JSON with stable per-run finding references.
 
 **Given** checkout JSON is piped from `prr checkout <PR_URL>`
@@ -378,7 +378,7 @@ So that PRR emits structured review JSON that `prr render` can consume directly.
 
 **Given** `--what-if` is enabled
 **When** `prr review` runs
-**Then** PRR prints the command and prompt/input paths it would use
+**Then** PRR prints the command and input envelope details it would use
 **And** performs no external command execution.
 
 **Given** review safety options (`--max-patch-bytes`, `--max-files`) and workspace retention (`--keep`)
@@ -391,7 +391,7 @@ So that PRR emits structured review JSON that `prr render` can consume directly.
 
 **Given** the agent review stage is executed
 **When** PRR invokes the configured CLI command
-**Then** invocation parameters are explicit and deterministic (binary, ordered args, `-p` prompt argument, optional `--model`, `cwd = workDir`, stdin/input mode, timeout)
+**Then** invocation parameters are explicit and deterministic (binary, ordered args, optional `--model`, `cwd = workDir`, stdin/input mode, timeout)
 **And** the selected `copilot` command/flags variant is pinned and covered by regression tests
 **And** GitHub CLI (`gh`) is not used as the agent execution command in this story.
 

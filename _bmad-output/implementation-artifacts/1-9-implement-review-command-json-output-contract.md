@@ -1,20 +1,20 @@
 # Story 1.9: Rework Review Command to Invoke Agent CLI and Emit Renderer-Compatible JSON
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
 ## Story
 
 As Richard,
-I want `prr review <PR_URL>` to pass deterministic diff JSON plus a review prompt into an agent CLI,
+I want `prr review <PR_URL>` to pass deterministic diff JSON plus deterministic review instructions into an agent CLI,
 so that the command returns structured review JSON that `prr render` can consume without manual translation.
 
 ## Acceptance Criteria
 
 1. Given a valid PR URL input (or equivalent checkout JSON piped from stdin), when I run `prr review`, then PRR prepares deterministic review input internally and invokes the GitHub Copilot agent CLI (`copilot`) in non-interactive mode with:
   - the prepared JSON diff payload,
-  - a deterministic review prompt passed via `-p`,
+  - deterministic review instructions and payload framing provided via stdin,
   - and stable command arguments suitable for automation.
 
 2. Given checkout JSON is piped from `prr checkout <PR_URL>`, when I run `prr review` without positional args, then PRR reads PR context from stdin and skips checkout-stage setup (`resolve`, mirror ensure/fetch, worktree creation), proceeding directly with review stages from the supplied context.
@@ -33,7 +33,7 @@ so that the command returns structured review JSON that `prr render` can consume
 
 7. Given `--verbose` is enabled, when external commands are invoked, then PRR logs invocation details to stderr before execution.
 
-8. Given `--what-if` is enabled, when `prr review` runs, then PRR prints the external command and prompt/input paths it would use, and does not execute the agent CLI.
+8. Given `--what-if` is enabled, when `prr review` runs, then PRR prints the external command and input envelope details it would use, and does not execute the agent CLI.
 
 9. Given review safety limit overrides (`--max-patch-bytes`, `--max-files`) or workspace retention (`--keep`), when `prr review <PR_URL>` runs, then CLI option handling remains compatible with README-documented behaviour.
 
@@ -50,12 +50,12 @@ so that the command returns structured review JSON that `prr render` can consume
 
 - [x] Add agent CLI adapter boundary (AC: 1, 4)
   - [x] Introduce `internal/engine` adapter for command construction and execution.
-  - [x] Support configurable binary/arguments and deterministic invocation settings.
+  - [x] Support configurable binary/arguments and deterministic invocation settings via environment configuration.
   - [x] Map exit/error conditions to stable error classes.
 
 - [x] Implement deterministic prompt and input packaging (AC: 1)
   - [x] Define prompt template/instructions for code review scope and output schema.
-  - [x] Pass the prompt to Copilot using `-p` so the invocation exits once prompt execution completes.
+  - [x] Pass deterministic instructions plus review payload via stdin envelope for automation-safe execution.
   - [x] Pass diff JSON payload as structured input to the agent CLI.
   - [x] Ensure prompt text enforces output schema required by renderer.
 
@@ -78,7 +78,7 @@ so that the command returns structured review JSON that `prr render` can consume
   - [x] Tests for `prr review <PR_URL>` positional input and stdin checkout-pipe input modes.
   - [x] Tests for README-documented review options (`--keep`, `--max-patch-bytes`, `--max-files`, `--model`) in the reworked flow.
   - [x] Unit tests for command construction and `--verbose`/`--what-if` behaviour.
-  - [x] Unit tests asserting Copilot invocation includes `-p <prompt>`.
+  - [x] Unit tests asserting deterministic stdin envelope markers and model pass-through behaviour.
   - [x] Unit tests asserting `prr review --model` maps to Copilot `--model`.
   - [x] Unit tests asserting the agent process is launched with `cwd = workDir`.
   - [x] Fixture-based tests for valid agent output to renderer-compatible JSON.
@@ -98,13 +98,14 @@ so that the command returns structured review JSON that `prr render` can consume
   - accept PR context via positional PR URL or checkout JSON on stdin,
   - skip checkout-stage setup when valid checkout JSON is provided via stdin,
   - build deterministic review input from existing internal stages,
-  - pass prompt content to Copilot via `-p`,
+  - provide deterministic instructions and payload framing via stdin envelope,
   - accept optional `--model <model_name>` and pass it through to Copilot as `--model <model_name>`,
   - run the agent CLI with the checked-out PR worktree as process working directory,
   - invoke agent CLI non-interactively,
   - parse and validate response,
   - emit renderer-compatible JSON.
 - Support configuration for agent CLI command path and invocation mode.
+  - Environment overrides: `PRR_AGENT_COMMAND`, `PRR_AGENT_ARGS`, `PRR_AGENT_MODEL_ARG`, `PRR_AGENT_INPUT_MODE`, `PRR_AGENT_OUTPUT_MODE`, `PRR_AGENT_TIMEOUT_SECONDS`.
 - Support timeout and output-size safeguards for agent invocation.
 - Never emit secrets in logs or surfaced error payloads.
 
@@ -116,13 +117,13 @@ so that the command returns structured review JSON that `prr render` can consume
 Required invocation shape:
 
 ```text
-<agent_binary> <agent_args...> -p "<prompt>" [--model <model_name>]
+<agent_binary> <agent_args...> [--model <model_name>]
 ```
 
 Required execution parameters:
 
 - `cwd`: must be set to checkout `workDir`.
-- `stdin`: must contain the prepared review input payload (or a deterministic prompt+payload envelope if file-based input is configured).
+- `stdin`: must contain a deterministic instructions plus bundle-payload envelope.
 - `env`: only required environment variables for agent execution/auth; no unrelated environment leakage in diagnostics.
 - `timeout`: enforced via config with stable timeout failure classification.
 
@@ -130,7 +131,6 @@ Required configured fields (minimum):
 
 - `agent.command`: executable path/name (must be `copilot`, not `gh`).
 - `agent.args`: ordered argument list for non-interactive invocation.
-- `agent.prompt_arg`: must be `-p`.
 - `agent.model_arg`: must be `--model`.
 - `agent.input_mode`: `stdin` or `file`.
 - `agent.output_mode`: must produce machine-parseable JSON (directly or via deterministic extraction path).
@@ -169,7 +169,7 @@ Copilot-specific note:
 - Validate that stdin checkout JSON path does not invoke resolve/mirror/fetch/worktree setup.
 - Validate deterministic command invocation parameters.
 - Validate agent invocation uses `workDir` as process working directory.
-- Validate Copilot invocation uses `-p` for prompt submission.
+- Validate Copilot invocation uses deterministic stdin envelope packaging and does not require `-p`.
 - Validate `prr review --model` pass-through to Copilot `--model`.
 - Validate README-documented option handling (`--keep`, `--max-patch-bytes`, `--max-files`, `--model`).
 - Validate `--what-if` performs no external execution.
@@ -194,7 +194,7 @@ GPT-5.3-Codex
 
 - 2026-03-05: Story rework request received to pivot Story 1.9 from generic review-engine output to explicit agent CLI invocation with schema-constrained output.
 - 2026-03-05: Implemented CLI adapter and review orchestration updates; added stdin checkout-context bypass, `--model` pass-through, deterministic prompt/input packaging, and parser/error hardening.
-- 2026-03-05: Added command and engine tests for invocation semantics (`-p`, `--model`, `cwd`, what-if/verbose), mixed-output JSON extraction, and failure classification.
+- 2026-03-05: Added command and engine tests for invocation semantics (stdin envelope, `--model`, `cwd`, what-if/verbose), mixed-output JSON extraction, and failure classification.
 - 2026-03-05: Field validation with installed Copilot CLI showed `--json` unsupported and `-p` mode unsuitable for deterministic stdin-driven payload handling.
 - 2026-03-05: Decision made to remove `-p` from runtime invocation and move all instructions + diff payload into stdin envelope with explicit delimiters.
 - 2026-03-05: Added verbose output logging of Copilot stdout/stderr to diagnose schema/output issues during live runs.
@@ -202,7 +202,7 @@ GPT-5.3-Codex
 
 ### Completion Notes List
 
-- Reworked `prr review` flow to keep existing upstream prep stages while adding an explicit Copilot CLI invocation stage with deterministic prompt (`-p`) and diff-bundle JSON input.
+- Reworked `prr review` flow to keep existing upstream prep stages while adding an explicit Copilot CLI invocation stage with deterministic stdin instruction+payload envelope and diff-bundle JSON input.
 - Added authoritative stdin checkout-context mode to bypass resolve/mirror/fetch/worktree setup and continue directly with diff/bundle/review stages.
 - Added `--model` flag to `prr review` and passed selected model through to agent invocation as `--model`.
 - Implemented robust agent response extraction/normalisation for mixed output and classed errors for malformed output, missing binary, timeout, and non-zero exit.
@@ -212,6 +212,9 @@ GPT-5.3-Codex
 - Runtime invocation now uses stdin-only control envelope (instruction block + `DIFF_BUNDLE_JSON_START/END` around deterministic diff bundle JSON) with optional `--model` pass-through.
 - Added explicit instruction text requiring `risk.score` to be a decimal in the inclusive range `[0,1]`.
 - Runtime review pipeline now parses/extracts JSON and emits it as returned by Copilot (no schema validation gate in command/engine path).
+- Runtime review pipeline enforces schema/value constraints (including `risk.score` range) after JSON extraction and before emitting output.
+- Added what-if diagnostics to log deterministic input envelope details alongside command invocation metadata.
+- Added environment-based agent configuration overrides for command, args, invocation mode, model flag key, output mode, and timeout.
 
 ### File List
 
@@ -221,7 +224,7 @@ GPT-5.3-Codex
 - internal/engine/engine_test.go
 - internal/types/review.go
 - internal/types/review_test.go
-- prr
+- _bmad-output/planning-artifacts/epics.md
 - _bmad-output/implementation-artifacts/1-9-implement-review-command-json-output-contract.md
 - _bmad-output/implementation-artifacts/sprint-status.yaml
 
@@ -230,3 +233,4 @@ GPT-5.3-Codex
 - 2026-03-05: Reworked Story 1.9 scope to require `prr review` agent CLI invocation using deterministic diff JSON + prompt, with renderer-compatible JSON output contract.
 - 2026-03-05: Implemented Story 1.9 review-command rework with Copilot CLI adapter, stdin checkout-context bypass, model pass-through, structured output normalisation, and test coverage for invocation + failure semantics.
 - 2026-03-05: Updated runtime integration strategy after live CLI findings: removed `-p`, removed unsupported `--json`, switched to stdin-only instruction+payload envelope, added verbose Copilot output diagnostics, and removed runtime schema validation gate for returned review JSON.
+- 2026-03-06: Applied code-review fixes: added configurable agent invocation via environment overrides, added what-if envelope diagnostics, enforced output value-constraint validation for `risk.score`, and aligned story/planning artefacts with implemented behaviour.

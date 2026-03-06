@@ -6,7 +6,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 
@@ -51,13 +53,20 @@ type CLIAgentAdapter struct {
 }
 
 func DefaultAgentConfig() AgentConfig {
+	timeoutSeconds := 60
+	if raw := strings.TrimSpace(os.Getenv("PRR_AGENT_TIMEOUT_SECONDS")); raw != "" {
+		if parsed, err := strconv.Atoi(raw); err == nil && parsed > 0 {
+			timeoutSeconds = parsed
+		}
+	}
+
 	return AgentConfig{
-		Command:        "copilot",
-		Args:           []string{"--allow-all-tools"},
-		ModelArg:       "--model",
-		InputMode:      "stdin",
-		OutputMode:     "json-extracted",
-		TimeoutSeconds: 60,
+		Command:        envOrDefault("PRR_AGENT_COMMAND", "copilot"),
+		Args:           envArgsOrDefault("PRR_AGENT_ARGS", []string{"--allow-all-tools"}),
+		ModelArg:       envOrDefault("PRR_AGENT_MODEL_ARG", "--model"),
+		InputMode:      envOrDefault("PRR_AGENT_INPUT_MODE", "stdin"),
+		OutputMode:     envOrDefault("PRR_AGENT_OUTPUT_MODE", "json-extracted"),
+		TimeoutSeconds: timeoutSeconds,
 	}
 }
 
@@ -95,6 +104,7 @@ func (a *CLIAgentAdapter) Review(ctx context.Context, input ReviewInput) (types.
 	if input.Verbose || input.WhatIf {
 		logf("review engine command: %s", quoteCommand(command, args))
 		logf("review engine input mode: %s", a.config.InputMode)
+		logf("review engine input envelope: markers=DIFF_BUNDLE_JSON_START/DIFF_BUNDLE_JSON_END bytes=%d", len(stdinPayload))
 	}
 
 	if input.WhatIf {
@@ -399,4 +409,26 @@ func shellQuote(value string) string {
 	}
 
 	return value
+}
+
+func envOrDefault(key, fallback string) string {
+	if value := strings.TrimSpace(os.Getenv(key)); value != "" {
+		return value
+	}
+
+	return fallback
+}
+
+func envArgsOrDefault(key string, fallback []string) []string {
+	value := strings.TrimSpace(os.Getenv(key))
+	if value == "" {
+		return append([]string{}, fallback...)
+	}
+
+	args := strings.Fields(value)
+	if len(args) == 0 {
+		return append([]string{}, fallback...)
+	}
+
+	return args
 }
