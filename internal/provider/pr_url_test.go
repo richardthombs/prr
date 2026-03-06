@@ -109,3 +109,24 @@ func TestParsePullRequestURLVisualStudioCaseSensitive(t *testing.T) {
 		t.Fatalf("unexpected provider %q", parsed.Provider)
 	}
 }
+
+func TestParsePullRequestURLGitHubTooFewSegments(t *testing.T) {
+	_, err := parsePullRequestURL("https://github.com/steveyegge/pull/2331")
+	if err == nil {
+		t.Fatalf("expected error for GitHub URL with too few path segments")
+	}
+}
+
+func TestParsePullRequestURLNonNumericPRID(t *testing.T) {
+	_, err := parsePullRequestURL("https://github.com/acme/repo/pull/abc")
+	if err == nil {
+		t.Fatalf("expected error for non-numeric PR ID")
+	}
+}
+
+func TestParsePullRequestURLRelativePathRejected(t *testing.T) {
+	_, err := parsePullRequestURL("relative/path/to/pr")
+	if err == nil {
+		t.Fatalf("expected error for relative path")
+	}
+}

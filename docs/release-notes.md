@@ -1,5 +1,14 @@
 # Release Notes
 
+## 2026-03-06
+
+### Review command now emits Markdown by default; `--json` flag added; `render` command removed
+
+- `prr review` now emits a formatted Markdown review report to stdout by default (Summary, Risk, Findings, Checklist sections).
+- New `--json` flag on `prr review` emits structured JSON (`summary`, `risk`, `findings`, `checklist`) for automation workflows and shell pipelines.
+- The `prr render` command has been removed. Rendering is now an internal step of `review`.
+- Migration: replace `prr review … | prr render` with `prr review …`; replace `prr review … | some-tool` with `prr review … --json | some-tool`.
+
 ## 2026-03-04
 
 ### Resolve command contract update

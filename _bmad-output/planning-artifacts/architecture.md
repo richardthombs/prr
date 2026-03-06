@@ -92,7 +92,7 @@ CLI tool (Go) based on project requirements analysis.
 ### Selected Starter: Cobra CLI starter
 
 **Rationale for Selection:**
-Cobra best fits a command-oriented tool with a focused MVP subcommand set (`review`, `render`). It balances structure, maintainability, and ecosystem maturity for an intermediate solo developer workflow while keeping complex Git and engine orchestration as internal stages.
+Cobra best fits a command-oriented tool with a focused MVP subcommand set (`review`). It balances structure, maintainability, and ecosystem maturity for an intermediate solo developer workflow while keeping complex Git and engine orchestration as internal stages.
 
 **Initialization Command:**
 
@@ -212,7 +212,7 @@ Not applicable (CLI product). Output rendering uses Markdown formatter + JSON se
 - Internal JSON contracts: `camelCase` for bundle/review payloads exposed to external engines.
 - CLI flags: kebab-case (`--output-format`, `--max-patch-bytes`)
 - Env vars: upper snake case (`PRR_PROVIDER`, `PRR_MAX_FILES`)
-- Subcommands: verb-first lower-case (`review`, `render`, `version`)
+- Subcommands: verb-first lower-case (`review`, `version`)
 
 **Code Naming Conventions:**
 - Go packages: short lowercase (`provider`, `workspace`, `renderer`)
@@ -327,7 +327,7 @@ prr/
 │   └── prr/
 │       ├── main.go
 │       ├── root.go
-│       ├── render.go
+│       ├── render_helpers.go
 │       ├── review.go
 │       └── version.go
 ├── internal/
@@ -404,7 +404,7 @@ prr/
 
 **API Boundaries:**
 - CLI boundary at `cmd/prr/*` only.
-- MVP command surface at CLI boundary includes `review` and `render`.
+- MVP command surface at CLI boundary is `review` (Markdown default, `--json` for automation).
 - Provider boundary at `internal/provider/*` (`resolve`, optional `publish`).
 - Review engine boundary at `internal/engine/*` (bundle in, review out).
 

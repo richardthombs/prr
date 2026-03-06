@@ -5,60 +5,8 @@ import (
 	"sort"
 	"strings"
 
-	apperrors "github.com/richardthombs/prr/internal/errors"
 	"github.com/richardthombs/prr/internal/types"
-	"github.com/spf13/cobra"
 )
-
-func init() {
-	rootCmd.AddCommand(renderCmd)
-	renderCmd.Flags().Bool("verbose", false, "Emit progress logs to stderr")
-	renderCmd.Flags().Bool("what-if", false, "Show actions that would be executed without side effects")
-}
-
-var renderCmd = &cobra.Command{
-	Use:   "render",
-	Short: "Render review JSON into Markdown",
-	Long:  "Read structured review JSON from stdin and output deterministic Markdown sections for summary, risk, findings, and checklist.",
-	RunE: func(cmd *cobra.Command, _ []string) error {
-		verbose, err := cmd.Flags().GetBool("verbose")
-		if err != nil {
-			return apperrors.WrapRuntime("failed to parse verbose flag", err)
-		}
-		whatIf, err := readWhatIfFlag(cmd)
-		if err != nil {
-			return err
-		}
-
-		input := types.Review{}
-		parsed, err := readInputJSON(cmd, &input)
-		if err != nil {
-			return err
-		}
-		if !parsed {
-			return apperrors.WrapConfig("render command requires review JSON on stdin", nil)
-		}
-
-		review, err := types.ValidateReviewInput(input)
-		if err != nil {
-			return err
-		}
-
-		if verbose || whatIf {
-			_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "[prr] render: transform review JSON to markdown")
-		}
-		if whatIf {
-			_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "[prr] what-if: render stage uses no external commands")
-		}
-
-		markdown := renderMarkdown(review)
-		if _, err := fmt.Fprintln(cmd.OutOrStdout(), markdown); err != nil {
-			return apperrors.WrapRuntime("failed to write markdown output", err)
-		}
-
-		return nil
-	},
-}
 
 func renderMarkdown(review types.Review) string {
 	var builder strings.Builder

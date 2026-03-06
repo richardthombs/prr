@@ -79,3 +79,53 @@ func TestBuildV1EnforcesChangedFilesLimit(t *testing.T) {
 		t.Fatalf("expected LIMIT_EXCEEDED diagnostic, got %v", err)
 	}
 }
+
+func TestValidateV1SchemaRejectsWrongVersion(t *testing.T) {
+	err := ValidateV1Schema(types.BundleV1{Version: "v2", Range: "HEAD^1..HEAD", Files: []string{}, Stat: "ok", Patch: "patch"})
+	if err == nil {
+		t.Fatalf("expected error for wrong version")
+	}
+	if !strings.Contains(err.Error(), "bundle version must be v1") {
+		t.Fatalf("expected version diagnostic, got %v", err)
+	}
+}
+
+func TestValidateV1SchemaRejectsMissingRange(t *testing.T) {
+	err := ValidateV1Schema(types.BundleV1{Version: "v1", Files: []string{}, Stat: "ok", Patch: "patch"})
+	if err == nil {
+		t.Fatalf("expected error for missing range")
+	}
+	if !strings.Contains(err.Error(), "bundle range is required") {
+		t.Fatalf("expected range diagnostic, got %v", err)
+	}
+}
+
+func TestValidateV1SchemaRejectsNilFiles(t *testing.T) {
+	err := ValidateV1Schema(types.BundleV1{Version: "v1", Range: "HEAD^1..HEAD", Files: nil, Stat: "ok", Patch: "patch"})
+	if err == nil {
+		t.Fatalf("expected error for nil files list")
+	}
+	if !strings.Contains(err.Error(), "bundle files list is required") {
+		t.Fatalf("expected files diagnostic, got %v", err)
+	}
+}
+
+func TestValidateV1SchemaRejectsMissingStat(t *testing.T) {
+	err := ValidateV1Schema(types.BundleV1{Version: "v1", Range: "HEAD^1..HEAD", Files: []string{}, Patch: "patch"})
+	if err == nil {
+		t.Fatalf("expected error for missing stat")
+	}
+	if !strings.Contains(err.Error(), "bundle stat is required") {
+		t.Fatalf("expected stat diagnostic, got %v", err)
+	}
+}
+
+func TestValidateV1SchemaRejectsMissingPatch(t *testing.T) {
+	err := ValidateV1Schema(types.BundleV1{Version: "v1", Range: "HEAD^1..HEAD", Files: []string{}, Stat: "ok"})
+	if err == nil {
+		t.Fatalf("expected error for missing patch")
+	}
+	if !strings.Contains(err.Error(), "bundle patch is required") {
+		t.Fatalf("expected patch diagnostic, got %v", err)
+	}
+}

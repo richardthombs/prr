@@ -15,7 +15,6 @@ func TestRootCommandMetadata(t *testing.T) {
 func TestPlaceholderCommandsRegistered(t *testing.T) {
 	expected := map[string]bool{
 		"checkout": false,
-		"render":   false,
 		"review":   false,
 		"version":  false,
 	}

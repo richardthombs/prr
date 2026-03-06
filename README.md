@@ -14,7 +14,10 @@ These Go commands are the canonical contributor workflow on macOS, Linux, and Wi
 ## Commands
 
 - `prr review <PR_URL>`  
-  Run an end-to-end review for a pull request using either numeric ID or full PR URL input.
+  Run an end-to-end review for a pull request using either numeric ID or full PR URL input. Emits a Markdown review report to stdout by default.
+
+- `prr review <PR_URL> --json`  
+  Emit structured JSON output (`summary`, `risk`, `findings`, `checklist`) instead of Markdown — for automation workflows and shell pipelines.
 
 - `prr review <PR_URL> --keep`  
   Keep the isolated review worktree after the run for inspection.
@@ -52,8 +55,11 @@ The `checkout` output includes workspace fields (for example `bareDir`, `mergeRe
 ## Review examples
 
 ```bash
-# Run review using full PR URL (no --repo/--provider required)
+# Run review using full PR URL — Markdown output by default
 prr review "https://github.com/<owner>/<repo>/pull/<id>"
+
+# Emit structured JSON instead of Markdown (for automation)
+prr review "https://github.com/<owner>/<repo>/pull/<id>" --json
 
 # Run review from checkout JSON pipeline
 prr checkout "https://github.com/<owner>/<repo>/pull/<id>" | prr review

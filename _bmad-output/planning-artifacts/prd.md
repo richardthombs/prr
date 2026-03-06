@@ -134,7 +134,7 @@ Richard scripts PRR in a shell pipeline using JSON-friendly inputs/outputs. A wr
 
 ### Project-Type Overview
 
-PRR is a script-friendly CLI for deterministic review-input generation and on-demand PR review execution. The command surface prioritises a minimal two-command model (`review` + `render`) while preserving automation support through stable JSON contracts. The tool behaves predictably across repeated runs for input preparation and provides explicit, machine-parsable failure behaviour for integration scenarios.
+PRR is a script-friendly CLI for deterministic review-input generation and on-demand PR review execution. The command surface prioritises a minimal single-command model (`review`) while preserving automation support through stable JSON contracts via `--json`. The tool behaves predictably across repeated runs for input preparation and provides explicit, machine-parsable failure behaviour for integration scenarios.
 
 ### Technical Architecture Considerations
 
@@ -143,9 +143,8 @@ The CLI should be structured around deterministic input-generation stages: PR re
 ### Command Structure
 
 - Primary command: `prr review <PR_ID>`.
-- Additional MVP command: `prr render`.
-- `prr review` must perform context resolution, mirror/worktree preparation, deterministic diff generation, bundle preparation, and review engine invocation before emitting JSON output.
-- `prr render` must accept review JSON (stdin or file input) and produce Markdown output.
+- `prr review` must perform context resolution, mirror/worktree preparation, deterministic diff generation, bundle preparation, and review engine invocation, then emit a Markdown review report to stdout by default.
+- `--json` flag on `prr review` emits structured JSON (`summary`, `risk`, `findings`, `checklist`) for automation workflows.
 - Support explicit provider/repo context resolution (automatic where possible, overridable when needed).
 - Include `--keep` to retain worktree for inspection; default behaviour is cleanup.
 - All commands must support equivalent flags and JSON-compatible stdin/stdout contracts where applicable.
@@ -153,8 +152,8 @@ The CLI should be structured around deterministic input-generation stages: PR re
 
 ### Output Formats
 
-- `prr review` output: structured JSON for summary/risk/findings/checklist payloads.
-- `prr render` output: Markdown review report.
+- `prr review` default output: Markdown review report (Summary, Risk, Findings, Checklist).
+- `prr review --json` output: structured JSON for summary/risk/findings/checklist payloads.
 - Error output should be explicit and actionable, with machine-consumable fields in structured mode.
 - Keep stdout/stderr behaviour consistent to avoid breaking shell pipelines.
 
@@ -183,7 +182,7 @@ The CLI should be structured around deterministic input-generation stages: PR re
 
 ### MVP Strategy & Philosophy
 
-**MVP Approach:** Problem-solving MVP focused on a reliable unified review workflow and a dedicated render step for JSON-to-Markdown conversion.
+**MVP Approach:** Problem-solving MVP focused on a reliable unified review workflow with Markdown output by default and `--json` flag for automation.
 **Resource Requirements:** Solo builder (Richard), with skills in CLI engineering, Git plumbing, and basic prompt/review-engine integration.
 
 ### MVP Feature Set (Phase 1)
@@ -204,7 +203,7 @@ The CLI should be structured around deterministic input-generation stages: PR re
 - Markdown default rendering + optional publish integration.
 - Configurable safety limits (patch bytes, changed files) and clear errors.
 - Cleanup by default, `--keep` override, stable exit-code semantics.
-- Explicit MVP command surface includes `review` and `render`; prior composable operations remain internal pipeline stages.
+- Explicit MVP command surface is `review` (with `--json` flag for automation); prior composable operations remain internal pipeline stages.
 
 ### Post-MVP Features
 

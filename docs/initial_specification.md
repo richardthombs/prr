@@ -291,6 +291,8 @@ PRR is designed as a set of composable commands that read JSON from stdin and em
   - High-level orchestration command.
   - Must not require the user to be inside a repo.
   - Must accept `--repo <repoUrl>` if the PR provider cannot resolve a repo URL from PR id alone.
+  - Emits a Markdown review report to stdout by default.
+  - `--json` flag emits structured JSON output for automation.
 
 ### Recommended composable commands
 
@@ -300,7 +302,6 @@ These are recommended to support piping and testing, but may be implemented inte
 - `prr diff` → emits diff outputs
 - `prr bundle` → emits `Bundle`
 - `prr review-engine` → emits `Review`
-- `prr render` → prints Markdown
 - `prr publish` → posts results (optional)
 
 All commands must also support equivalent flags (not only stdin).

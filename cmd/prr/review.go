@@ -29,6 +29,7 @@ func init() {
 	reviewCmd.Flags().Int("max-patch-bytes", 0, "Maximum allowed patch size in bytes (0 disables limit)")
 	reviewCmd.Flags().Int("max-files", 0, "Maximum allowed changed file count (0 disables limit)")
 	reviewCmd.Flags().String("model", "", "Copilot model to use for review generation")
+	reviewCmd.Flags().Bool("json", false, "Emit structured JSON output instead of Markdown")
 }
 
 var reviewEngineFactory = func() engine.ReviewEngine {
@@ -212,13 +213,24 @@ var reviewCmd = &cobra.Command{
 			return apperrors.WrapEngine("failed to run review engine", err)
 		}
 
-		encoded, err := json.Marshal(reviewOutput)
+		emitJSON, err := cmd.Flags().GetBool("json")
 		if err != nil {
-			return apperrors.WrapRuntime("failed to encode review JSON", err)
+			return apperrors.WrapRuntime("failed to parse json flag", err)
 		}
 
-		if _, err := fmt.Fprintln(cmd.OutOrStdout(), string(encoded)); err != nil {
-			return apperrors.WrapRuntime("failed to write output", err)
+		if emitJSON {
+			encoded, err := json.Marshal(reviewOutput)
+			if err != nil {
+				return apperrors.WrapRuntime("failed to encode review JSON", err)
+			}
+			if _, err := fmt.Fprintln(cmd.OutOrStdout(), string(encoded)); err != nil {
+				return apperrors.WrapRuntime("failed to write output", err)
+			}
+		} else {
+			markdown := renderMarkdown(reviewOutput)
+			if _, err := fmt.Fprintln(cmd.OutOrStdout(), markdown); err != nil {
+				return apperrors.WrapRuntime("failed to write markdown output", err)
+			}
 		}
 
 		return nil

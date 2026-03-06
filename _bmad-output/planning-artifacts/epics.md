@@ -131,7 +131,7 @@ Richard can produce deterministic, versioned release packages for supported plat
 
 ## Epic 1: CLI Setup, Configuration, and Unified Review Orchestration
 
-Richard can initialise PRR, run the primary review flow with a single `review` command that orchestrates internal stages, and use `render` to convert review JSON into Markdown with predictable contracts and overrides.
+Richard can initialise PRR, run the primary review flow with a single `review` command that orchestrates internal stages and emits Markdown by default, with `--json` flag for structured JSON output.
 
 ### Story 1.1: Initialise Cobra CLI Project Skeleton
 
@@ -320,36 +320,35 @@ So that review inputs are generated and validated end-to-end from one command.
 **Then** PRR prints external commands it would execute
 **And** performs no external command execution.
 
-### Story 1.9: Rework Review Command to Invoke Agent CLI and Emit Renderer-Compatible JSON
+### Story 1.9: Rework Review Command to Emit Markdown by Default with --json Flag
 
 **FRs:** FR21, FR22, FR23, FR24, FR25, FR26, FR27, FR28, FR29
 
 As Richard,
-I want `prr review <PR_URL>` to pass deterministic diff JSON plus deterministic review instructions to an agent CLI,
-So that PRR emits structured review JSON that `prr render` can consume directly.
+I want `prr review <PR_URL>` to produce a Markdown review report directly,
+So that reviewing a PR requires a single command with no additional rendering step.
 
 **Acceptance Criteria:**
 
 **Given** a valid PR URL input (or equivalent checkout JSON piped from stdin)
 **When** I run `prr review`
-**Then** PRR prepares deterministic review input internally and invokes the GitHub Copilot agent CLI (`copilot`) in non-interactive mode with deterministic prompt + input payload
-**And** deterministic instructions plus payload framing are provided via stdin envelope
-**And** PRR emits structured review JSON with stable per-run finding references.
+**Then** PRR prepares deterministic review input internally, invokes the configured review engine, and emits a formatted Markdown report to stdout by default
+**And** the Markdown report includes Summary, Risk, Findings, and Checklist sections.
+
+**Given** the `--json` flag is passed
+**When** I run `prr review --json`
+**Then** PRR emits structured review JSON (`summary`, `risk`, `findings`, `checklist`) to stdout instead of Markdown
+**And** the JSON output is automation-stable and machine-readable (FR26).
 
 **Given** checkout JSON is piped from `prr checkout <PR_URL>`
 **When** I run `prr review` without positional args
-**Then** PRR reads PR context from stdin and skips checkout-stage setup (`resolve`, mirror ensure/fetch, worktree creation)
+**Then** PRR reads PR context from stdin and skips checkout-stage setup
 **And** proceeds directly with review stages from supplied context.
 
 **Given** malformed, partial, or non-JSON agent output
 **When** `prr review` parses the response
 **Then** PRR fails with actionable diagnostics and stable classed non-zero exit codes
-**And** does not emit ambiguous partial review JSON.
-
-**Given** a successful agent CLI response
-**When** PRR normalises the response
-**Then** output JSON matches renderer requirements (`summary`, `risk`, `findings`, `checklist`)
-**And** channel/exit behaviour remains automation-stable.
+**And** does not emit ambiguous partial output.
 
 **Given** agent invocation fails (CLI missing, auth/config missing, timeout, non-zero exit)
 **When** `prr review` runs
