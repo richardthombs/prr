@@ -55,26 +55,3 @@ development_status:
   1-11-normalise-cross-platform-path-and-test-contracts: done
   1-12-add-cross-os-build-and-smoke-verification-for-cli-baseline: done
   epic-1-retrospective: done
-  epic-2: backlog
-  2-1-create-and-maintain-per-repository-bare-mirror-cache: backlog
-  2-2-add-lock-safe-mirror-updates-for-concurrent-runs: backlog
-  2-3-fetch-provider-merge-snapshot-with-explicit-missing-ref-handling: backlog
-  2-4-create-isolated-detached-worktree-and-enforce-cleanup-keep-behaviour: backlog
-  epic-2-retrospective: optional
-  epic-3: backlog
-  3-1-compute-deterministic-pr-contribution-diff: backlog
-  3-2-produce-changed-file-list-diff-stat-and-unified-patch-outputs: backlog
-  3-3-build-review-bundle-schema-payload: backlog
-  3-4-enforce-configurable-input-size-limits-with-clear-failure-modes: backlog
-  epic-3-retrospective: optional
-  epic-4: backlog
-  4-1-implement-review-engine-adapter-and-bundle-submission: backlog
-  4-2-normalise-and-validate-structured-review-response: backlog
-  4-3-emit-stage-level-observability-and-sanitised-error-diagnostics: backlog
-  epic-4-retrospective: optional
-  epic-5: backlog
-  5-1-render-markdown-review-report-as-default-human-output: backlog
-  5-2-provide-stable-json-output-mode-for-automation: backlog
-  5-3-add-optional-publication-of-review-output-back-to-pr: backlog
-  5-4-finalise-stable-exit-codes-and-automation-outcome-contracts: backlog
-  epic-5-retrospective: optional
