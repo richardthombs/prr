@@ -184,10 +184,12 @@ func repoSlugFromURL(rawRepoURL string) string {
 }
 
 func providerFromHost(host string) string {
-	switch host {
-	case "github.com":
+	switch {
+	case host == "github.com":
 		return "github"
-	case "dev.azure.com":
+	case host == "dev.azure.com":
+		return "azure"
+	case strings.HasSuffix(host, ".visualstudio.com"):
 		return "azure"
 	default:
 		firstLabel := host

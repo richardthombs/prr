@@ -24,10 +24,12 @@ func parsePullRequestURL(rawURL string) (pullRequestContext, error) {
 		return pullRequestContext{}, fmt.Errorf("invalid pull request URL")
 	}
 
-	switch parsedURL.Host {
-	case "dev.azure.com":
+	switch {
+	case parsedURL.Host == "dev.azure.com":
 		return parseAzureDevOpsPullRequestURL(parsedURL)
-	case "github.com":
+	case strings.HasSuffix(parsedURL.Host, ".visualstudio.com"):
+		return parseVisualStudioPullRequestURL(parsedURL)
+	case parsedURL.Host == "github.com":
 		return parseGitHubPullRequestURL(parsedURL)
 	default:
 		return pullRequestContext{}, fmt.Errorf("unsupported pull request URL provider")
@@ -51,6 +53,33 @@ func parseAzureDevOpsPullRequestURL(parsedURL *url.URL) (pullRequestContext, err
 	}
 
 	repoURL := fmt.Sprintf("%s://%s/%s", parsedURL.Scheme, parsedURL.Host, strings.Join(pathSegments[:4], "/"))
+
+	return pullRequestContext{
+		PRID:     prID,
+		RepoURL:  repoURL,
+		Provider: "azure-devops",
+		Remote:   "origin",
+	}, nil
+}
+
+// parseVisualStudioPullRequestURL handles the legacy visualstudio.com URL format:
+// https://{org}.visualstudio.com/{project}/_git/{repo}/pullrequest/{id}
+func parseVisualStudioPullRequestURL(parsedURL *url.URL) (pullRequestContext, error) {
+	pathSegments := strings.Split(strings.Trim(parsedURL.Path, "/"), "/")
+	if len(pathSegments) < 5 {
+		return pullRequestContext{}, fmt.Errorf("invalid Azure DevOps pull request URL format")
+	}
+
+	if pathSegments[1] != "_git" || pathSegments[3] != "pullrequest" {
+		return pullRequestContext{}, fmt.Errorf("invalid Azure DevOps pull request URL format")
+	}
+
+	prID, err := strconv.Atoi(pathSegments[4])
+	if err != nil || prID <= 0 {
+		return pullRequestContext{}, fmt.Errorf("invalid pull request identifier in URL")
+	}
+
+	repoURL := fmt.Sprintf("%s://%s/%s", parsedURL.Scheme, parsedURL.Host, strings.Join(pathSegments[:3], "/"))
 
 	return pullRequestContext{
 		PRID:     prID,

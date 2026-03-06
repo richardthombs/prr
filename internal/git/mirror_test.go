@@ -78,6 +78,19 @@ func TestResolveMirrorDirAzureDevOpsUsesProviderProjectRepoSlug(t *testing.T) {
 	}
 }
 
+func TestResolveMirrorDirVisualStudioUsesAzureProviderSlug(t *testing.T) {
+	service := NewServiceWithCacheDir(&recorderRunner{}, t.TempDir())
+
+	path, err := service.ResolveMirrorDir("https://ensekltd.visualstudio.com/blackbird/_git/blackbird")
+	if err != nil {
+		t.Fatalf("expected mirror dir resolution to succeed, got %v", err)
+	}
+
+	if filepath.Base(path) != "azure-blackbird-blackbird.git" {
+		t.Fatalf("expected azure provider-project-repo naming, got %q", filepath.Base(path))
+	}
+}
+
 func TestEnsureMirrorUsesUpdateForExistingMirror(t *testing.T) {
 	runner := &recorderRunner{}
 	service := NewServiceWithCacheDir(runner, t.TempDir())
