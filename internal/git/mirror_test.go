@@ -68,13 +68,27 @@ func TestResolveMirrorDirGitHubUsesProviderOwnerRepoSlug(t *testing.T) {
 func TestResolveMirrorDirAzureDevOpsUsesProviderProjectRepoSlug(t *testing.T) {
 	service := NewServiceWithCacheDir(&recorderRunner{}, t.TempDir())
 
+	// org (ensekltd) is skipped; only project+repo are used to match the visualstudio.com shape
 	path, err := service.ResolveMirrorDir("https://dev.azure.com/ensekltd/blackbird/_git/blackbird")
 	if err != nil {
 		t.Fatalf("expected mirror dir resolution to succeed, got %v", err)
 	}
 
-	if filepath.Base(path) != "azure-ensekltd-blackbird.git" {
+	if filepath.Base(path) != "azure-blackbird-blackbird.git" {
 		t.Fatalf("expected azure provider-project-repo naming, got %q", filepath.Base(path))
+	}
+}
+
+func TestResolveMirrorDirAzureDevOpsCaseSensitiveSlug(t *testing.T) {
+	service := NewServiceWithCacheDir(&recorderRunner{}, t.TempDir())
+
+	path, err := service.ResolveMirrorDir("https://dev.azure.com/ensekltd/PayAsYouGo/_git/Payg")
+	if err != nil {
+		t.Fatalf("expected mirror dir resolution to succeed, got %v", err)
+	}
+
+	if filepath.Base(path) != "azure-PayAsYouGo-Payg.git" {
+		t.Fatalf("expected case-preserving azure project-repo slug, got %q", filepath.Base(path))
 	}
 }
 
@@ -88,6 +102,38 @@ func TestResolveMirrorDirVisualStudioUsesAzureProviderSlug(t *testing.T) {
 
 	if filepath.Base(path) != "azure-blackbird-blackbird.git" {
 		t.Fatalf("expected azure provider-project-repo naming, got %q", filepath.Base(path))
+	}
+}
+
+func TestResolveMirrorDirVisualStudioCaseSensitiveSlug(t *testing.T) {
+	service := NewServiceWithCacheDir(&recorderRunner{}, t.TempDir())
+
+	path, err := service.ResolveMirrorDir("https://ensekltd.visualstudio.com/PayAsYouGo/_git/Payg")
+	if err != nil {
+		t.Fatalf("expected mirror dir resolution to succeed, got %v", err)
+	}
+
+	if filepath.Base(path) != "azure-PayAsYouGo-Payg.git" {
+		t.Fatalf("expected case-preserving azure project-repo slug, got %q", filepath.Base(path))
+	}
+}
+
+func TestResolveMirrorDirAzureDevOpsAndVisualStudioProduceSameSlug(t *testing.T) {
+	service := NewServiceWithCacheDir(&recorderRunner{}, t.TempDir())
+
+	devAzurePath, err := service.ResolveMirrorDir("https://dev.azure.com/ensekltd/PayAsYouGo/_git/Payg")
+	if err != nil {
+		t.Fatalf("expected dev.azure.com resolution to succeed, got %v", err)
+	}
+
+	vsPath, err := service.ResolveMirrorDir("https://ensekltd.visualstudio.com/PayAsYouGo/_git/Payg")
+	if err != nil {
+		t.Fatalf("expected visualstudio.com resolution to succeed, got %v", err)
+	}
+
+	if filepath.Base(devAzurePath) != filepath.Base(vsPath) {
+		t.Fatalf("expected both Azure DevOps URL formats to produce the same slug, got %q and %q",
+			filepath.Base(devAzurePath), filepath.Base(vsPath))
 	}
 }
 

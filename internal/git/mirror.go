@@ -166,6 +166,11 @@ func repoSlugFromURL(rawRepoURL string) string {
 		provider = providerFromHost(host)
 
 		pathSegments := pathSegmentsFromRepoURL(parsedURL.Path)
+		// dev.azure.com includes the org as the first path segment; skip it so
+		// the slug uses project+repo, consistent with the *.visualstudio.com format.
+		if host == "dev.azure.com" && len(pathSegments) > 2 {
+			pathSegments = pathSegments[1:]
+		}
 		scope, repo := scopeAndRepoFromSegments(pathSegments)
 		if scope != "" {
 			primarySegment = scope
@@ -237,16 +242,16 @@ func scopeAndRepoFromSegments(segments []string) (string, string) {
 }
 
 func sanitizeSlugPart(value string) string {
-	lower := strings.ToLower(strings.TrimSpace(value))
-	if lower == "" {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
 		return ""
 	}
 
 	builder := strings.Builder{}
-	builder.Grow(len(lower))
+	builder.Grow(len(trimmed))
 	lastWasDash := false
-	for _, char := range lower {
-		isAlphaNum := (char >= 'a' && char <= 'z') || (char >= '0' && char <= '9')
+	for _, char := range trimmed {
+		isAlphaNum := (char >= 'a' && char <= 'z') || (char >= 'A' && char <= 'Z') || (char >= '0' && char <= '9')
 		if isAlphaNum {
 			builder.WriteRune(char)
 			lastWasDash = false
@@ -261,6 +266,7 @@ func sanitizeSlugPart(value string) string {
 
 	return strings.Trim(builder.String(), "-")
 }
+
 
 func MergeRefForPRID(prID int) string {
 	return mergeRefPrefix + strconv.Itoa(prID) + "/merge"

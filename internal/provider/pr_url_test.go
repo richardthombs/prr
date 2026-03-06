@@ -75,3 +75,37 @@ func TestParsePullRequestURLFailsForMalformedAzurePath(t *testing.T) {
 		t.Fatalf("expected malformed azure URL error")
 	}
 }
+
+func TestParsePullRequestURLAzureDevOpsCaseSensitive(t *testing.T) {
+	parsed, err := parsePullRequestURL("https://dev.azure.com/ensekltd/PayAsYouGo/_git/Payg/pullrequest/84677")
+	if err != nil {
+		t.Fatalf("expected successful URL parsing, got error: %v", err)
+	}
+
+	if parsed.PRID != 84677 {
+		t.Fatalf("expected PR ID 84677, got %d", parsed.PRID)
+	}
+	if parsed.RepoURL != "https://dev.azure.com/ensekltd/PayAsYouGo/_git/Payg" {
+		t.Fatalf("unexpected repo URL %q", parsed.RepoURL)
+	}
+	if parsed.Provider != "azure-devops" {
+		t.Fatalf("unexpected provider %q", parsed.Provider)
+	}
+}
+
+func TestParsePullRequestURLVisualStudioCaseSensitive(t *testing.T) {
+	parsed, err := parsePullRequestURL("https://ensekltd.visualstudio.com/PayAsYouGo/_git/Payg/pullrequest/84677")
+	if err != nil {
+		t.Fatalf("expected successful URL parsing, got error: %v", err)
+	}
+
+	if parsed.PRID != 84677 {
+		t.Fatalf("expected PR ID 84677, got %d", parsed.PRID)
+	}
+	if parsed.RepoURL != "https://ensekltd.visualstudio.com/PayAsYouGo/_git/Payg" {
+		t.Fatalf("unexpected repo URL %q", parsed.RepoURL)
+	}
+	if parsed.Provider != "azure-devops" {
+		t.Fatalf("unexpected provider %q", parsed.Provider)
+	}
+}
