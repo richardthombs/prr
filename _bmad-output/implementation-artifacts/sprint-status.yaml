@@ -55,8 +55,8 @@ development_status:
   1-12-add-cross-os-build-and-smoke-verification-for-cli-baseline: done
   epic-1-retrospective: done
 
-  epic-2: backlog
-  2-1-define-release-artifact-matrix-and-naming-contract: backlog
+  epic-2: in-progress
+  2-1-define-release-artifact-matrix-and-naming-contract: review
   2-2-implement-reproducible-cross-platform-release-build-pipeline: backlog
   2-3-publish-release-artifacts-via-github-release-workflow: backlog
   2-4-add-checksums-and-integrity-verification-artifacts: backlog

@@ -66,6 +66,14 @@ func TestRootHelpRunsSuccessfully(t *testing.T) {
 }
 
 func TestVersionCommandOutputsVersionValue(t *testing.T) {
+	previousVersion, previousCommit := version, commit
+	t.Cleanup(func() {
+		version = previousVersion
+		commit = previousCommit
+	})
+	version = "dev"
+	commit = "abcdef123456"
+
 	stdout := &bytes.Buffer{}
 	rootCmd.SetOut(stdout)
 	rootCmd.SetErr(&bytes.Buffer{})
@@ -76,7 +84,7 @@ func TestVersionCommandOutputsVersionValue(t *testing.T) {
 	}
 
 	output := strings.TrimSpace(stdout.String())
-	if output != version {
-		t.Fatalf("expected version output %q, got %q", version, output)
+	if output != resolvedVersion() {
+		t.Fatalf("expected version output %q, got %q", resolvedVersion(), output)
 	}
 }

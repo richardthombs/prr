@@ -11,6 +11,12 @@ PRR is a CLI tool that automates pull request review from a single command by cr
 These Go commands are the canonical contributor workflow on macOS, Linux, and Windows.
 `Makefile` targets are optional convenience helpers for Unix-like environments.
 
+## Release contract
+
+- Artifact naming, target matrix, and SemVer rules are defined in `docs/release-process.md`.
+- Release tags must follow `vMAJOR.MINOR.PATCH` or `vMAJOR.MINOR.PATCH-rc.N`.
+- Non-release builds expose deterministic version output as `v0.0.0-dev+<shortsha>`.
+
 ## Commands
 
 - `prr review <PR_URL>`  

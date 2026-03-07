@@ -495,7 +495,7 @@ So that every release produces predictable files across OS/architecture targets.
 **Given** a proposed next release
 **When** the team classifies completed changes
 **Then** the selected SemVer bump (`major`, `minor`, `patch`) follows the documented decision matrix
-**And** the rationale is recorded in release notes/changelog inputs.
+**And** the rationale is recorded in release preparation metadata.
 
 **Given** an invalid or non-SemVer release tag
 **When** the packaging workflow starts

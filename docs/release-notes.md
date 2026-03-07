@@ -23,3 +23,4 @@
 ### Tooling
 
 - Updated `Makefile` build target to produce the runnable CLI binary at `./prr` from `./cmd/prr`.
+
