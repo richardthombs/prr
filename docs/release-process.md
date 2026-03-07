@@ -71,6 +71,18 @@ Build metadata is injected through link-time variables and treated as a shared c
 - Release build: prints exact SemVer tag (`vMAJOR.MINOR.PATCH` or `vMAJOR.MINOR.PATCH-rc.N`)
 - Dev build: prints `v0.0.0-dev+<shortsha>`
 
+Release workflow reproducibility requirements:
+
+- Build with `CGO_ENABLED=0` and `-trimpath` for deterministic static binaries.
+- Use `-ldflags` to inject `version`, `commit`, and `buildDate` consistently for every target.
+- Keep target matrix and artifact naming exactly as defined by this contract.
+
+Allowed non-functional variance scope:
+
+- `buildDate` is sourced from the tagged commit timestamp in UTC RFC3339 (`YYYY-MM-DDTHH:MM:SSZ`).
+- `commit` reflects the full source commit SHA used for the build.
+- No additional ad hoc metadata fields or naming variants are permitted.
+
 ## 6. Release Entry Validation (Fail Fast)
 
 The release workflow validates the release tag before any build/publish stage runs.

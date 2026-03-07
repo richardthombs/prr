@@ -54,25 +54,33 @@ jobs:
 
   build-artifacts:
     name: Build release artifacts
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.runner }}
     needs: validate-tag
     if: ${{ needs.validate-tag.result == 'success' }}
     strategy:
       fail-fast: false
       matrix:
         include:
-          - os: darwin
+          - index: 1
+            os: darwin
             arch: arm64
             ext: ""
-          - os: linux
+            runner: macos-14
+          - index: 2
+            os: linux
             arch: amd64
             ext: ""
-          - os: linux
+            runner: ubuntu-latest
+          - index: 3
+            os: linux
             arch: arm64
             ext: ""
-          - os: windows
+            runner: ubuntu-24.04-arm
+          - index: 4
+            os: windows
             arch: amd64
             ext: ".exe"
+            runner: windows-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -83,13 +91,68 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      - name: Build contract-aligned artifact name
+      - name: Build deterministic release binary
         shell: bash
         run: |
           set -euo pipefail
+
           version="${{ needs.validate-tag.outputs.release_tag }}"
+          commit="${{ github.sha }}"
+          build_date="$(TZ=UTC git show -s --date=format-local:'%Y-%m-%dT%H:%M:%SZ' --format=%cd "$commit")"
           artifact="prr_${version}_${{ matrix.os }}_${{ matrix.arch }}${{ matrix.ext }}"
-          echo "Would produce: $artifact"
+
+          mkdir -p dist/release
+
+          GOOS="${{ matrix.os }}" GOARCH="${{ matrix.arch }}" CGO_ENABLED=0 \
+            go build \
+              -trimpath \
+              -ldflags "-s -w -buildid= -X main.version=${version} -X main.commit=${commit} -X main.buildDate=${build_date}" \
+              -o "dist/release/${artifact}" \
+              ./cmd/prr
+
+          built_version="$("dist/release/${artifact}" version)"
+          if [[ "$built_version" != "$version" ]]; then
+            echo "ERROR: version smoke check failed for ${artifact}"
+            echo "Expected: ${version}"
+            echo "Actual:   ${built_version}"
+            exit 1
+          fi
+
+          echo "Built and verified: ${artifact}"
+
+      - name: Upload target artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.index }}-${{ matrix.os }}-${{ matrix.arch }}
+          path: dist/release/*
+          if-no-files-found: error
+
+  verify-artifact-contract:
+    name: Verify artifact contract before publish
+    runs-on: ubuntu-latest
+    needs:
+      - validate-tag
+      - build-artifacts
+    if: ${{ needs.validate-tag.result == 'success' && needs.build-artifacts.result == 'success' }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download matrix artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          merge-multiple: true
+          path: dist/release
+
+      - name: Validate deterministic artifact matrix and naming
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          version="${{ needs.validate-tag.outputs.release_tag }}"
+
+          bash scripts/verify_release_contract.sh "$version" dist/release
 
   publish-release:
     name: Publish GitHub release artifacts
@@ -97,9 +160,10 @@ jobs:
     needs:
       - validate-tag
       - build-artifacts
-    if: ${{ needs.validate-tag.result == 'success' && needs.build-artifacts.result == 'success' }}
+      - verify-artifact-contract
+    if: ${{ needs.validate-tag.result == 'success' && needs.build-artifacts.result == 'success' && needs.verify-artifact-contract.result == 'success' }}
     steps:
       - name: Publication contract gate
         run: |
           echo "Publish stage intentionally deferred to Story 2.3."
-          echo "This job only runs when tag validation and build stages succeed."
+          echo "This job only runs when tag validation, build, and artifact contract checks succeed."
