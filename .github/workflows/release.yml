@@ -207,16 +207,18 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
 
           version="${{ needs.validate-tag.outputs.release_tag }}"
 
-          if gh release view "$version" >/dev/null 2>&1; then
+          if gh release view "$version" --repo "$GH_REPO" >/dev/null 2>&1; then
             echo "Using existing GitHub release for tag ${version}."
           else
             echo "No existing release found for ${version}; creating one now."
             gh release create "$version" \
+              --repo "$GH_REPO" \
               --verify-tag \
               --title "$version" \
               --generate-notes
@@ -226,6 +228,7 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
 
@@ -239,7 +242,7 @@ jobs:
 
           for artifact in "${artifacts[@]}"; do
             echo "::group::Upload ${artifact}"
-            if ! gh release upload "$version" "dist/release/${artifact}" --clobber; then
+            if ! gh release upload "$version" "dist/release/${artifact}" --repo "$GH_REPO" --clobber; then
               echo "::error title=Release upload failed::Artifact upload failed for ${artifact} (tag ${version})."
               echo "::error::Publish stage stopped after first failed artifact to avoid ambiguous partial success."
               echo "::endgroup::"
