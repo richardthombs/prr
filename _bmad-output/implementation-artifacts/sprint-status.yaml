@@ -56,9 +56,9 @@ development_status:
   epic-1-retrospective: done
 
   epic-2: in-progress
-  2-1-define-release-artifact-matrix-and-naming-contract: review
-  2-2-implement-reproducible-cross-platform-release-build-pipeline: review
-  2-3-publish-release-artifacts-via-github-release-workflow: review
-  2-4-add-checksums-and-integrity-verification-artifacts: backlog
-  2-5-document-release-packaging-and-verification-process: backlog
+  2-1-define-source-build-and-install-contract: done
+  2-2-simplify-makefile-for-source-first-workflow: done
+  2-3-document-macos-ubuntu-and-windows-install-instructions: done
+  2-4-add-troubleshooting-and-uninstall-guidance: done
+  2-5-de-scope-binary-distribution-from-current-sprint-plan: done
   epic-2-retrospective: optional

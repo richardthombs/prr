@@ -125,9 +125,9 @@ FR30: Epic 1 - Configure defaults with per-run override controls
 Richard can initialise PRR, run a review command with the correct PR context, and control defaults/overrides for predictable execution.
 **FRs covered:** FR1, FR2, FR3, FR4, FR30
 
-### Epic 2: Release Packaging and Distribution
-Richard can produce deterministic, versioned release packages for supported platforms and publish them with validation artifacts.
-**FRs covered:** Additional release model requirement (single static CLI binaries per OS/arch with CI-backed verification)
+### Epic 2: Source Build and Local Installation Experience
+Richard can clone PRR, build it on macOS, Ubuntu Linux, or Windows, and install it locally with clear, low-friction instructions.
+**FRs covered:** NFR18 cross-OS equivalence, contributor onboarding requirement, and source-first distribution strategy
 
 ## Epic 1: CLI Setup, Configuration, and Unified Review Orchestration
 
@@ -457,133 +457,87 @@ So that CLI entry and composable command contracts are validated before release.
 **Then** instructions use cross-platform Go commands as the source of truth
 **And** Unix-only helper commands are marked optional.
 
-## Epic 2: Release Packaging and Distribution
+## Epic 2: Source Build and Local Installation Experience
 
-Richard can generate release-grade PRR binaries for target platforms, package them consistently, and publish release artifacts with verifiable metadata.
+Richard can build and install PRR from a repository checkout on macOS, Ubuntu Linux, and Windows without relying on prebuilt binary distribution.
 
-### Story 2.1: Define Release Artifact Matrix and Naming Contract
+### Story 2.1: Define Source Build and Install Contract
 
-**FRs:** Additional release model requirement
+**FRs:** NFR18
 
 As Richard,
-I want a clear release artifact contract,
-So that every release produces predictable files across OS/architecture targets.
-
-**SemVer Specification Notes:**
-
-- Canonical release version source is a Git tag in `vMAJOR.MINOR.PATCH` format.
-- Pre-release tags use SemVer suffixes (for example `v1.3.0-rc.1`) and are treated as non-stable releases.
-- Non-tag/dev builds use `v0.0.0-dev+<shortsha>` for explicit non-release signalling.
-- Version bump policy is explicit and mandatory:
-  - `MAJOR` for breaking changes to CLI contracts, output contracts, or documented behaviour guarantees.
-  - `MINOR` for backwards-compatible feature additions.
-  - `PATCH` for backwards-compatible fixes and maintenance.
-- Artifact naming includes project, version, OS, and architecture with deterministic ordering.
+I want a clear source-build contract,
+So that contributors have one consistent cross-platform path for build, test, install, and verification.
 
 **Acceptance Criteria:**
 
-**Given** supported target platforms
-**When** I review release packaging configuration
-**Then** target OS/arch combinations are explicitly defined
-**And** artifact filenames follow a stable semantic-version naming scheme.
+**Given** a fresh repository checkout
+**When** I follow documented source steps
+**Then** I can run `go build ./...`, `go test ./...`, and install the CLI successfully
+**And** these commands are treated as canonical on macOS, Linux, and Windows.
 
-**Given** pre-release and stable tags
-**When** release packages are generated
-**Then** artifact metadata reflects the version/tag correctly
-**And** no ad hoc naming is introduced.
+**Given** a local install
+**When** I run `prr version`
+**Then** the installed binary responds from PATH
+**And** troubleshooting steps are documented for PATH misconfiguration.
 
-**Given** a proposed next release
-**When** the team classifies completed changes
-**Then** the selected SemVer bump (`major`, `minor`, `patch`) follows the documented decision matrix
-**And** the rationale is recorded in release preparation metadata.
+### Story 2.2: Simplify Makefile for Source-First Workflow
 
-**Given** an invalid or non-SemVer release tag
-**When** the packaging workflow starts
-**Then** the workflow fails fast with actionable validation diagnostics
-**And** no release artifacts are published.
-
-**Given** a release build and a non-release/dev build
-**When** `prr version` is executed for each
-**Then** release output reports the exact SemVer tag
-**And** dev output reports the defined `v0.0.0-dev+<shortsha>` format with commit metadata.
-
-### Story 2.2: Implement Reproducible Cross-Platform Release Build Pipeline
-
-**FRs:** Additional release model requirement
+**FRs:** NFR18
 
 As Richard,
-I want deterministic build packaging for each target platform,
-So that release binaries are reproducible and ready for distribution.
+I want a minimal Makefile focused on local developer use,
+So that there is no confusion between source installs and release packaging automation.
 
 **Acceptance Criteria:**
 
-**Given** a valid release tag
-**When** the release build pipeline runs
-**Then** static binaries are produced for each configured OS/arch target
-**And** build metadata (version, commit, build date) is embedded consistently.
+**Given** the project root
+**When** I run `make build`, `make test`, or `make install`
+**Then** each target maps directly to the canonical Go workflow
+**And** no release packaging matrix targets are required for contributor setup.
 
-**Given** unchanged source and build inputs
-**When** release packaging is re-run
-**Then** produced artifact structure remains functionally equivalent
-**And** any variance is limited to explicitly documented metadata fields.
+### Story 2.3: Document macOS, Ubuntu, and Windows Install Instructions
 
-### Story 2.3: Publish Release Artifacts via GitHub Release Workflow
-
-**FRs:** Additional release model requirement
+**FRs:** NFR18
 
 As Richard,
-I want release artifacts uploaded automatically,
-So that tagged versions are available without manual packaging steps.
+I want platform-specific prerequisites and install instructions,
+So that setup is straightforward for each supported OS.
 
 **Acceptance Criteria:**
 
-**Given** a release-triggering tag
-**When** the GitHub Actions release workflow executes
-**Then** all generated platform artifacts are attached to the corresponding GitHub Release
-**And** workflow logs provide actionable diagnostics on failure.
+**Given** a target platform (macOS, Ubuntu Linux, Windows)
+**When** I read installation documentation
+**Then** I see required prerequisites, build/test/install commands, and install verification
+**And** Windows guidance includes a non-Make fallback path.
 
-**Given** publish failure for any target artifact
-**When** the workflow completes
-**Then** the run fails with clear stage-level error reporting
-**And** partial publish outcomes are explicit and non-ambiguous.
+### Story 2.4: Add Troubleshooting and Uninstall Guidance
 
-### Story 2.4: Add Checksums and Integrity Verification Artifacts
-
-**FRs:** Additional release model requirement
+**FRs:** NFR15
 
 As Richard,
-I want release checksums generated and published,
-So that downstream users can verify download integrity.
+I want concise troubleshooting notes for local installation,
+So that common setup issues can be resolved quickly.
 
 **Acceptance Criteria:**
 
-**Given** generated release binaries
-**When** packaging completes
-**Then** checksum files are produced for all artifacts
-**And** checksum files are published alongside the binaries.
+**Given** install issues (for example PATH not configured)
+**When** I consult install documentation
+**Then** I can identify Go bin location and fix PATH
+**And** uninstall instructions are provided for all supported platforms.
 
-**Given** a downloaded artifact and checksum set
-**When** verification is run
-**Then** integrity can be validated with standard tooling
-**And** checksum format is documented in release notes or process docs.
+### Story 2.5: De-scope Binary Distribution from Current Sprint Plan
 
-### Story 2.5: Document Release Packaging and Verification Process
-
-**FRs:** Additional release model requirement
+**FRs:** Planning alignment
 
 As Richard,
-I want release packaging steps documented,
-So that contributors can run, validate, and troubleshoot release creation reliably.
+I want binary publication work de-prioritised,
+So that effort is focused on source usability and cross-platform contributor experience.
 
 **Acceptance Criteria:**
 
-**Given** the release workflow and artifact contract
-**When** I read release documentation
-**Then** I can follow a complete path from tag creation to published artifacts
-**And** post-release verification steps are clearly listed.
-
-**Given** release workflow failures
-**When** maintainers follow troubleshooting guidance
-**Then** common failure classes and recovery actions are documented
-**And** the documented process matches actual workflow behaviour.
+**Given** current sprint planning artifacts
+**When** I review Epic 2 scope
+**Then** release artifact publication stories are removed or deferred
+**And** source build/install outcomes are the explicit deliverable for this sprint.
 

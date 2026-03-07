@@ -1,5 +1,18 @@
 # Release Notes
 
+## 2026-03-07
+
+### Distribution strategy pivot: source-first install guidance for macOS, Ubuntu, and Windows
+
+- PRR is now documented as source-first distribution instead of prebuilt binary distribution.
+- Added `docs/install.md` with platform-specific prerequisites and install instructions for:
+  - macOS
+  - Ubuntu Linux
+  - Windows
+- Simplified `Makefile` to source-focused targets: `build`, `install`, `test`, `clean`.
+- Updated `README.md` to point contributors to source install and verification workflow.
+- Replaced release-process contract with source distribution and install contract guidance.
+
 ## 2026-03-06
 
 ### Review command now emits Markdown by default; `--json` flag added; `render` command removed

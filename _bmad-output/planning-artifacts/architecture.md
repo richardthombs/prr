@@ -119,7 +119,7 @@ Go `testing` package baseline; command handlers can be unit-tested by package bo
 `cmd/` entrypoints + internal packages for provider, git workspace, bundle, engine, renderer.
 
 **Development Experience:**
-Fast iteration with `go test`, `go run`, predictable binary packaging, straightforward cross-platform builds.
+Fast iteration with `go test`, `go run`, and straightforward cross-platform source builds/install flows.
 
 **Note:** Project initialization using this command should be the first implementation story.
 
@@ -136,7 +136,7 @@ Fast iteration with `go test`, `go run`, predictable binary packaging, straightf
 
 **Important Decisions (Shape Architecture):**
 - Logging and observability structure.
-- Packaging/release strategy.
+- Source distribution and installation strategy.
 - CI quality gates and test layers.
 
 **Deferred Decisions (Post-MVP):**
@@ -172,7 +172,7 @@ Not applicable (CLI product). Output rendering uses Markdown formatter + JSON se
 
 ### Infrastructure & Deployment
 
-- **Build/release:** Single static CLI binary distribution per target OS/arch.
+- **Build/distribution:** Source-first distribution; users build from repository checkout on their platform.
 - **CI baseline:** lint + unit tests + integration tests (Git/provider contract focus) + smoke CLI run.
 - **Cross-platform verification:** run build/test/smoke matrix across macOS, Linux, and Windows.
 - **Runtime target:** Local developer machine execution (no mandatory hosted runtime for MVP).
@@ -185,7 +185,7 @@ Not applicable (CLI product). Output rendering uses Markdown formatter + JSON se
 2. Git workspace/mirror subsystem with locking
 3. Provider adapter + review-engine adapter
 4. Bundle/render pipeline + JSON/Markdown outputs
-5. Publish adapter + integration tests + release packaging
+5. Publish adapter + integration tests + source-install documentation and onboarding
 
 **Cross-Component Dependencies:**
 - Error taxonomy affects all command handlers and renderer outputs.
@@ -480,10 +480,10 @@ prr/
 - N/A (CLI). Local execution via `go run ./cmd/prr`.
 
 **Build Process Structure:**
-- Build/release targets in `Makefile`; CI workflows in `.github/workflows`.
+- Source build/test/install targets in `Makefile`; CI workflows in `.github/workflows`.
 
 **Deployment Structure:**
-- Multi-OS binary artifacts produced by release workflow; no mandatory hosted runtime.
+- Repository source checkout + local build/install on target OS; no mandatory hosted runtime.
 
 ## Architecture Validation Results
 
