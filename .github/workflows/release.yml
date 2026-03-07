@@ -1,5 +1,8 @@
 name: Release
 
+permissions:
+  contents: write
+
 on:
   push:
     tags:
@@ -163,7 +166,87 @@ jobs:
       - verify-artifact-contract
     if: ${{ needs.validate-tag.result == 'success' && needs.build-artifacts.result == 'success' && needs.verify-artifact-contract.result == 'success' }}
     steps:
-      - name: Publication contract gate
+      - name: Download verified artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          merge-multiple: true
+          path: dist/release
+
+      - name: Verify publish input set
+        shell: bash
         run: |
-          echo "Publish stage intentionally deferred to Story 2.3."
-          echo "This job only runs when tag validation, build, and artifact contract checks succeed."
+          set -euo pipefail
+
+          version="${{ needs.validate-tag.outputs.release_tag }}"
+          artifacts=(
+            "prr_${version}_darwin_arm64"
+            "prr_${version}_linux_amd64"
+            "prr_${version}_linux_arm64"
+            "prr_${version}_windows_amd64.exe"
+          )
+
+          echo "Preparing to publish ${#artifacts[@]} release artifacts for tag ${version}."
+
+          missing=0
+          for artifact in "${artifacts[@]}"; do
+            if [[ ! -f "dist/release/${artifact}" ]]; then
+              echo "::error title=Missing publish artifact::Expected file not found: dist/release/${artifact}"
+              missing=1
+            fi
+          done
+
+          if [[ "$missing" -ne 0 ]]; then
+            echo "::group::Available files in dist/release"
+            ls -la dist/release || true
+            echo "::endgroup::"
+            exit 1
+          fi
+
+      - name: Ensure release exists for tag
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          version="${{ needs.validate-tag.outputs.release_tag }}"
+
+          if gh release view "$version" >/dev/null 2>&1; then
+            echo "Using existing GitHub release for tag ${version}."
+          else
+            echo "No existing release found for ${version}; creating one now."
+            gh release create "$version" \
+              --verify-tag \
+              --title "$version" \
+              --generate-notes
+          fi
+
+      - name: Upload release artifacts (fail-fast)
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          version="${{ needs.validate-tag.outputs.release_tag }}"
+          artifacts=(
+            "prr_${version}_darwin_arm64"
+            "prr_${version}_linux_amd64"
+            "prr_${version}_linux_arm64"
+            "prr_${version}_windows_amd64.exe"
+          )
+
+          for artifact in "${artifacts[@]}"; do
+            echo "::group::Upload ${artifact}"
+            if ! gh release upload "$version" "dist/release/${artifact}" --clobber; then
+              echo "::error title=Release upload failed::Artifact upload failed for ${artifact} (tag ${version})."
+              echo "::error::Publish stage stopped after first failed artifact to avoid ambiguous partial success."
+              echo "::endgroup::"
+              exit 1
+            fi
+            echo "Uploaded ${artifact}"
+            echo "::endgroup::"
+          done
+
+          echo "Successfully uploaded all release artifacts for ${version}."

@@ -58,7 +58,7 @@ development_status:
   epic-2: in-progress
   2-1-define-release-artifact-matrix-and-naming-contract: review
   2-2-implement-reproducible-cross-platform-release-build-pipeline: review
-  2-3-publish-release-artifacts-via-github-release-workflow: backlog
+  2-3-publish-release-artifacts-via-github-release-workflow: review
   2-4-add-checksums-and-integrity-verification-artifacts: backlog
   2-5-document-release-packaging-and-verification-process: backlog
   epic-2-retrospective: optional

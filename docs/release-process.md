@@ -121,3 +121,39 @@ Story 2.3 must consume:
 - Release tag validation gate behaviour
 - Artifact naming contract during upload/publication
 - No-publish-on-invalid-tag rule
+
+## 9. Release Publication Contract (Story 2.3)
+
+The `publish-release` job in `.github/workflows/release.yml` runs only after these gates succeed:
+
+- `validate-tag`
+- `build-artifacts`
+- `verify-artifact-contract`
+
+Publication input contract:
+
+- Artifacts are downloaded from upstream build jobs into `dist/release`.
+- The publish stage expects this exact deterministic set for the validated tag:
+	- `prr_<version>_darwin_arm64`
+	- `prr_<version>_linux_amd64`
+	- `prr_<version>_linux_arm64`
+	- `prr_<version>_windows_amd64.exe`
+- Any missing artifact fails the publish stage before upload begins.
+
+Release entity behaviour:
+
+- If a release for the validated tag already exists, it is reused.
+- If no release exists, the workflow creates one for that tag.
+- Re-runs for the same tag are idempotent for assets: uploads use `--clobber` so matching artifact names are replaced, not duplicated.
+
+Failure semantics and diagnostics:
+
+- Uploads execute artifact-by-artifact with fail-fast behavior.
+- The first failed upload stops the job immediately.
+- Logs include stage-scoped error messages that identify the failed artifact.
+- A failed upload always yields a failed job outcome; partial success is not reported as success.
+
+Scope boundary reminder:
+
+- Story 2.3 publishes release binaries only.
+- Checksums and integrity artifacts remain in Story 2.4 scope.
