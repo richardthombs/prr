@@ -5,3 +5,7 @@ bin/
 *.test.exe
 dist/
 prr
+
+# Dolt database files (added by bd init)
+.dolt/
+*.db
