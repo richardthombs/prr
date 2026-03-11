@@ -8,8 +8,9 @@ BINARY := prr
 build:
 	go build -o ./$(BINARY) ./cmd/prr
 
-install:
-	go install ./cmd/prr
+install: build
+	mkdir -p ~/.local/bin
+	cp -f ./$(BINARY) ~/.local/bin/$(BINARY)
 
 test:
 	go test ./...
