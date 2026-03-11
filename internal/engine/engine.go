@@ -53,7 +53,7 @@ type CLIAgentAdapter struct {
 }
 
 func DefaultAgentConfig() AgentConfig {
-	timeoutSeconds := 60
+	timeoutSeconds := 120
 	if raw := strings.TrimSpace(os.Getenv("PRR_AGENT_TIMEOUT_SECONDS")); raw != "" {
 		if parsed, err := strconv.Atoi(raw); err == nil && parsed > 0 {
 			timeoutSeconds = parsed
@@ -113,7 +113,7 @@ func (a *CLIAgentAdapter) Review(ctx context.Context, input ReviewInput) (types.
 
 	timeout := time.Duration(a.config.TimeoutSeconds) * time.Second
 	if timeout <= 0 {
-		timeout = 60 * time.Second
+		timeout = 120 * time.Second
 	}
 
 	timeoutCtx, cancel := context.WithTimeout(ctx, timeout)
