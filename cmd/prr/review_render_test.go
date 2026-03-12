@@ -484,7 +484,7 @@ func TestReviewCommandEmitsDeterministicMarkdown(t *testing.T) {
 	if first != second {
 		t.Fatalf("expected deterministic markdown output when running review twice with same inputs")
 	}
-	for _, expected := range []string{"## Summary", "## Risk", "## Findings", "## Checklist"} {
+	for _, expected := range []string{"## Ahoy, Here Be Thy Summary", "## Danger on the High Seas", "## Plunder and Findings", "## Ye Olde Checklist"} {
 		if !strings.Contains(first, expected) {
 			t.Fatalf("expected rendered markdown to include %q", expected)
 		}

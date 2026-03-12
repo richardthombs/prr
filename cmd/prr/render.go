@@ -11,12 +11,12 @@ import (
 func renderMarkdown(review types.Review) string {
 	var builder strings.Builder
 
-	builder.WriteString("## Summary\n")
+	builder.WriteString("## Ahoy, Here Be Thy Summary\n")
 	builder.WriteString(review.Summary)
 	builder.WriteString("\n\n")
 
-	builder.WriteString("## Risk\n")
-	builder.WriteString(fmt.Sprintf("Score: %.2f\n", review.Risk.Score))
+	builder.WriteString("## Danger on the High Seas\n")
+	builder.WriteString(fmt.Sprintf("Peril Score: %.2f\n", review.Risk.Score))
 	if len(review.Risk.Reasons) > 0 {
 		for _, reason := range review.Risk.Reasons {
 			builder.WriteString("- ")
@@ -26,7 +26,7 @@ func renderMarkdown(review types.Review) string {
 	}
 	builder.WriteString("\n")
 
-	builder.WriteString("## Findings\n")
+	builder.WriteString("## Plunder and Findings\n")
 	severityOrder := []string{"blocker", "important", "suggestion", "nit"}
 	grouped := map[string][]types.Finding{}
 	for _, finding := range review.Findings {
@@ -55,16 +55,16 @@ func renderMarkdown(review types.Review) string {
 		builder.WriteString("\n")
 		for _, finding := range findings {
 			builder.WriteString(fmt.Sprintf("- [%s] %s:%d (%s) - %s\n", finding.ID, finding.File, finding.Line, finding.Category, finding.Message))
-			builder.WriteString(fmt.Sprintf("  Suggestion: %s\n", finding.Suggestion))
+			builder.WriteString(fmt.Sprintf("  Crow's Nest Advice: %s\n", finding.Suggestion))
 		}
 		builder.WriteString("\n")
 	}
 
 	if len(review.Findings) == 0 {
-		builder.WriteString("No findings.\n\n")
+		builder.WriteString("No plunder found, matey!\n\n")
 	}
 
-	builder.WriteString("## Checklist\n")
+	builder.WriteString("## Ye Olde Checklist\n")
 	for _, item := range review.Checklist {
 		builder.WriteString("- [ ] ")
 		builder.WriteString(item)
@@ -77,13 +77,13 @@ func renderMarkdown(review types.Review) string {
 func severityHeading(severity string) string {
 	switch severity {
 	case "blocker":
-		return "Blocker"
+		return "Walk the Plank!"
 	case "important":
-		return "Important"
+		return "Shiver Me Timbers!"
 	case "suggestion":
-		return "Suggestion"
+		return "Avast!"
 	case "nit":
-		return "Nit"
+		return "Batten Down the Hatches!"
 	default:
 		return severity
 	}
