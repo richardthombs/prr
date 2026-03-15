@@ -65,6 +65,13 @@ var checkoutCmd = &cobra.Command{
 			return err
 		}
 
+		warnf := func(format string, args ...any) {
+			if verbose || whatIf {
+				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "[prr] warning: "+format+"\n", args...)
+			}
+		}
+		prRef = provider.EnrichPRRef(context.Background(), prRef, prEnricherFactory(), warnf)
+
 		service := mirrorServiceFactory()
 		commonOpts := git.EnsureOptions{
 			Verbose: verbose || whatIf,
@@ -80,8 +87,17 @@ var checkoutCmd = &cobra.Command{
 		}
 
 		mergeRef, err := service.FetchPRMergeRefWithOptions(context.Background(), bareDir, prRef.Remote, prRef.PRID, commonOpts)
+		var baseRef string
 		if err != nil {
-			return err
+			if prRef.BaseSHA == "" {
+				return provider.EnrichmentRequiredError(prRef.Provider)
+			}
+			headRef, headErr := service.FetchPRHeadRef(context.Background(), bareDir, prRef.Remote, prRef.PRID, commonOpts)
+			if headErr != nil {
+				return headErr
+			}
+			mergeRef = headRef
+			baseRef = prRef.BaseSHA
 		}
 
 		workDir, err := service.ResolveWorktreeDirFromBareDir(bareDir, prRef.PRID)
@@ -101,6 +117,7 @@ var checkoutCmd = &cobra.Command{
 			Provider: prRef.Provider,
 			BareDir:  bareDir,
 			MergeRef: mergeRef,
+			BaseRef:  baseRef,
 			WorkDir:  workDir,
 			Keep:     keep,
 			Cleanup:  !keep,

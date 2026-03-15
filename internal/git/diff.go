@@ -12,26 +12,31 @@ import (
 const contributionRange = "HEAD^1..HEAD"
 
 func (s *Service) DiffContribution(ctx context.Context, workDir string) (types.DiffOutput, error) {
-	return s.DiffContributionWithOptions(ctx, workDir, EnsureOptions{})
+	return s.DiffContributionWithOptions(ctx, workDir, "", EnsureOptions{})
 }
 
-func (s *Service) DiffContributionWithOptions(ctx context.Context, workDir string, opts EnsureOptions) (types.DiffOutput, error) {
+func (s *Service) DiffContributionWithOptions(ctx context.Context, workDir string, baseRef string, opts EnsureOptions) (types.DiffOutput, error) {
 	trimmedWorkDir := strings.TrimSpace(workDir)
 	if trimmedWorkDir == "" {
 		return types.DiffOutput{}, apperrors.WrapConfig("worktree directory is required; provide --work-dir or stdin JSON with workDir", nil)
 	}
 
-	filesOutput, err := s.runCommand(ctx, opts, "git", "-C", trimmedWorkDir, "diff", "--name-only", contributionRange)
+	diffRange := contributionRange
+	if strings.TrimSpace(baseRef) != "" {
+		diffRange = strings.TrimSpace(baseRef) + "..HEAD"
+	}
+
+	filesOutput, err := s.runCommand(ctx, opts, "git", "-C", trimmedWorkDir, "diff", "--name-only", diffRange)
 	if err != nil {
 		return types.DiffOutput{}, apperrors.WrapRuntime("failed to compute changed file list", err)
 	}
 
-	statOutput, err := s.runCommand(ctx, opts, "git", "-C", trimmedWorkDir, "diff", "--stat", contributionRange)
+	statOutput, err := s.runCommand(ctx, opts, "git", "-C", trimmedWorkDir, "diff", "--stat", diffRange)
 	if err != nil {
 		return types.DiffOutput{}, apperrors.WrapRuntime("failed to compute diff stat", err)
 	}
 
-	patchOutput, err := s.runCommand(ctx, opts, "git", "-C", trimmedWorkDir, "diff", "--patch", "--binary", contributionRange)
+	patchOutput, err := s.runCommand(ctx, opts, "git", "-C", trimmedWorkDir, "diff", "--patch", "--binary", diffRange)
 	if err != nil {
 		return types.DiffOutput{}, apperrors.WrapRuntime("failed to compute unified patch", err)
 	}
@@ -40,7 +45,7 @@ func (s *Service) DiffContributionWithOptions(ctx context.Context, workDir strin
 
 	return types.DiffOutput{
 		WorkDir: trimmedWorkDir,
-		Range:   contributionRange,
+		Range:   diffRange,
 		Files:   files,
 		Stat:    statOutput,
 		Patch:   patchOutput,

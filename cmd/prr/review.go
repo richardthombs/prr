@@ -107,6 +107,15 @@ var reviewCmd = &cobra.Command{
 			}
 		}
 
+		warnf := func(format string, args ...any) {
+			if verbose || whatIf {
+				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "[prr] warning: "+format+"\n", args...)
+			}
+		}
+		if !useCheckoutContext {
+			prRef = provider.EnrichPRRef(context.Background(), prRef, prEnricherFactory(), warnf)
+		}
+
 		service := mirrorServiceFactory()
 		commonOpts := git.EnsureOptions{
 			Verbose: verbose || whatIf,
@@ -118,6 +127,7 @@ var reviewCmd = &cobra.Command{
 
 		bareDir := strings.TrimSpace(stdinInput.BareDir)
 		mergeRef := strings.TrimSpace(stdinInput.MergeRef)
+		baseRef := strings.TrimSpace(stdinInput.BaseRef)
 		workDir := strings.TrimSpace(stdinInput.WorkDir)
 
 		if useCheckoutContext {
@@ -140,7 +150,15 @@ var reviewCmd = &cobra.Command{
 			}
 			mergeRef, err = service.FetchPRMergeRefWithOptions(context.Background(), bareDir, prRef.Remote, prRef.PRID, commonOpts)
 			if err != nil {
-				return err
+				if prRef.BaseSHA == "" {
+					return provider.EnrichmentRequiredError(prRef.Provider)
+				}
+				headRef, headErr := service.FetchPRHeadRef(context.Background(), bareDir, prRef.Remote, prRef.PRID, commonOpts)
+				if headErr != nil {
+					return headErr
+				}
+				mergeRef = headRef
+				baseRef = prRef.BaseSHA
 			}
 			workDir, err = service.ResolveWorktreeDirFromBareDir(bareDir, prRef.PRID)
 			if err != nil {
@@ -161,7 +179,7 @@ var reviewCmd = &cobra.Command{
 			}
 		}
 
-		diffOutput, err := service.DiffContributionWithOptions(context.Background(), workDir, commonOpts)
+		diffOutput, err := service.DiffContributionWithOptions(context.Background(), workDir, baseRef, commonOpts)
 		if err != nil {
 			return err
 		}
@@ -172,6 +190,7 @@ var reviewCmd = &cobra.Command{
 		diffOutput.Provider = prRef.Provider
 		diffOutput.BareDir = bareDir
 		diffOutput.MergeRef = mergeRef
+		diffOutput.BaseRef = baseRef
 		diffOutput.WorkDir = workDir
 
 		if whatIf {

@@ -3,11 +3,16 @@ package main
 import (
 	apperrors "github.com/richardthombs/prr/internal/errors"
 	"github.com/richardthombs/prr/internal/git"
+	"github.com/richardthombs/prr/internal/provider"
 	"github.com/spf13/cobra"
 )
 
 var mirrorServiceFactory = func() *git.Service {
 	return git.NewService(git.NewExecRunner())
+}
+
+var prEnricherFactory = func() provider.CLIRunner {
+	return git.NewExecRunner()
 }
 
 type resolveOptions struct {
@@ -23,6 +28,7 @@ type checkoutOutput struct {
 	Provider string `json:"provider,omitempty"`
 	BareDir  string `json:"bareDir"`
 	MergeRef string `json:"mergeRef"`
+	BaseRef  string `json:"baseRef,omitempty"`
 	WorkDir  string `json:"workDir"`
 	Keep     bool   `json:"keep"`
 	Cleanup  bool   `json:"cleanup"`
