@@ -5,6 +5,12 @@ This file is updated automatically by GoReleaser from conventional commit messag
 
 <!-- GoReleaser appends release notes above this line -->
 
+## v0.1.3 - 2026-03-15
+
+### Bug Fixes
+- Support reviewing closed GitHub PRs: use `gh`/`az` CLI to obtain base branch SHA when merge ref is unavailable
+- Suppress git subprocess stderr bleed; progress output now only appears with `--verbose`
+
 ## v0.1.2 - 2026-03-15
 
 ### Features
