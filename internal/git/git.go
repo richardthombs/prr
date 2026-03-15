@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io"
-	"os"
 	"os/exec"
 	"strings"
 )
@@ -27,7 +25,7 @@ func (r ExecRunner) Run(ctx context.Context, name string, args ...string) (strin
 	var stderr bytes.Buffer
 
 	cmd.Stdout = &stdout
-	cmd.Stderr = io.MultiWriter(&stderr, os.Stderr)
+	cmd.Stderr = &stderr
 
 	err := cmd.Run()
 	if err != nil {
