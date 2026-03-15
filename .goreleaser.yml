@@ -1,0 +1,183 @@
+# GoReleaser configuration for prr
+# See https://goreleaser.com for documentation
+
+version: 2
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: prr-linux-amd64
+    main: ./cmd/prr
+    binary: prr
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+    goarch:
+      - amd64
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.buildDate={{.Date}}
+
+  - id: prr-linux-arm64
+    main: ./cmd/prr
+    binary: prr
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+    goarch:
+      - arm64
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.buildDate={{.Date}}
+
+  - id: prr-darwin-amd64
+    main: ./cmd/prr
+    binary: prr
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+    goarch:
+      - amd64
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.buildDate={{.Date}}
+
+  - id: prr-darwin-arm64
+    main: ./cmd/prr
+    binary: prr
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+    goarch:
+      - arm64
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.buildDate={{.Date}}
+
+  - id: prr-windows-amd64
+    main: ./cmd/prr
+    binary: prr
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - windows
+    goarch:
+      - amd64
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.buildDate={{.Date}}
+
+  - id: prr-windows-arm64
+    main: ./cmd/prr
+    binary: prr
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - windows
+    goarch:
+      - arm64
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.buildDate={{.Date}}
+
+archives:
+  - id: prr-archive
+    format: tar.gz
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    format_overrides:
+      - goos: windows
+        format: zip
+    files:
+      - LICENSE
+      - README.md
+      - CHANGELOG.md
+
+brews:
+  - name: prr
+    repository:
+      owner: richardthombs
+      name: homebrew-prr
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+    directory: Formula
+    skip_upload: auto
+    homepage: "https://github.com/richardthombs/prr"
+    description: "CLI tool that automates pull request review from a single command"
+    license: "MIT"
+    install: |
+      bin.install "prr"
+
+checksum:
+  name_template: "checksums.txt"
+  algorithm: sha256
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+      - "Merge pull request"
+      - "Merge branch"
+  groups:
+    - title: "Features"
+      regexp: '^.*feat(\(\w+\))?:.*$'
+      order: 0
+    - title: "Bug Fixes"
+      regexp: '^.*fix(\(\w+\))?:.*$'
+      order: 1
+    - title: "Others"
+      order: 999
+
+release:
+  github:
+    owner: richardthombs
+    name: prr
+  draft: false
+  prerelease: auto
+  name_template: "v{{.Version}}"
+  header: |
+    ## prr v{{.Version}}
+
+    Pre-compiled binaries for Linux, macOS (Intel & Apple Silicon), and Windows (x86-64 & ARM64).
+
+    ### Installation
+
+    **Homebrew (macOS/Linux):**
+    ```bash
+    brew install richardthombs/prr/prr
+    ```
+
+    **Quick Install (macOS/Linux):**
+    ```bash
+    curl -fsSL https://raw.githubusercontent.com/richardthombs/prr/main/scripts/install.sh | bash
+    ```
+
+    **Windows (PowerShell):**
+    ```powershell
+    irm https://raw.githubusercontent.com/richardthombs/prr/main/scripts/install.ps1 | iex
+    ```
+
+    **Manual Install:**
+    Download the appropriate archive for your platform below, extract it, and place `prr` in your PATH.

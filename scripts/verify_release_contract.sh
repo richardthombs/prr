@@ -15,10 +15,13 @@ if [[ ! -d "$artifact_dir" ]]; then
 fi
 
 expected=(
-  "prr_${version}_darwin_arm64"
-  "prr_${version}_linux_amd64"
-  "prr_${version}_linux_arm64"
-  "prr_${version}_windows_amd64.exe"
+  "prr_${version}_linux_amd64.tar.gz"
+  "prr_${version}_linux_arm64.tar.gz"
+  "prr_${version}_darwin_amd64.tar.gz"
+  "prr_${version}_darwin_arm64.tar.gz"
+  "prr_${version}_windows_amd64.zip"
+  "prr_${version}_windows_arm64.zip"
+  "checksums.txt"
 )
 
 missing=0
@@ -30,14 +33,6 @@ for artifact in "${expected[@]}"; do
 done
 
 if [[ "$missing" -ne 0 ]]; then
-  echo "Artifacts found in $artifact_dir:"
-  ls -la "$artifact_dir"
-  exit 1
-fi
-
-found_count="$(find "$artifact_dir" -maxdepth 1 -type f -name "prr_${version}_*" | wc -l | tr -d ' ')"
-if [[ "$found_count" -ne 4 ]]; then
-  echo "ERROR: expected exactly 4 release artifacts for version $version, found $found_count"
   echo "Artifacts found in $artifact_dir:"
   ls -la "$artifact_dir"
   exit 1
