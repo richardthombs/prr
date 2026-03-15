@@ -272,6 +272,56 @@ func MergeRefForPRID(prID int) string {
 	return mergeRefPrefix + strconv.Itoa(prID) + "/merge"
 }
 
+func HeadRefForPRID(prID int) string {
+	return mergeRefPrefix + strconv.Itoa(prID) + "/head"
+}
+
+func (s *Service) FetchPRHeadRef(ctx context.Context, bareDir, remote string, prID int, opts EnsureOptions) (string, error) {
+	trimmedBareDir := strings.TrimSpace(bareDir)
+	if trimmedBareDir == "" {
+		return "", apperrors.WrapConfig("bare mirror directory is required; provide --bare-dir", nil)
+	}
+
+	trimmedRemote := strings.TrimSpace(remote)
+	if trimmedRemote == "" {
+		trimmedRemote = "origin"
+	}
+
+	if prID <= 0 {
+		return "", apperrors.WrapConfig("valid PR ID is required; provide --pr-id", nil)
+	}
+
+	headRef := HeadRefForPRID(prID)
+	sourceRef := "pull/" + strconv.Itoa(prID) + "/head"
+	destination := sourceRef + ":" + headRef
+
+	_, err := s.runCommand(ctx, opts, "git", "-C", trimmedBareDir, "fetch", trimmedRemote, destination)
+	if err != nil {
+		return "", apperrors.WrapProvider("failed to fetch PR head ref", err)
+	}
+
+	return headRef, nil
+}
+
+func (s *Service) ResolveMergeBase(ctx context.Context, bareDir, ref1, ref2 string, opts EnsureOptions) (string, error) {
+	trimmedBareDir := strings.TrimSpace(bareDir)
+	if trimmedBareDir == "" {
+		return "", apperrors.WrapConfig("bare mirror directory is required; provide --bare-dir", nil)
+	}
+
+	output, err := s.runCommand(ctx, opts, "git", "-C", trimmedBareDir, "merge-base", ref1, ref2)
+	if err != nil {
+		return "", apperrors.WrapRuntime("failed to resolve merge base", err)
+	}
+
+	base := strings.TrimSpace(output)
+	if base == "" && !opts.WhatIf {
+		return "", apperrors.WrapRuntime("merge-base returned empty result", nil)
+	}
+
+	return base, nil
+}
+
 func (s *Service) withRepoLock(bareDir string, opts EnsureOptions, run func() error) error {
 	if opts.ForceLock {
 		return run()

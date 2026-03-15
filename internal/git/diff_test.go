@@ -53,7 +53,7 @@ func TestDiffContributionWhatIfLogsAndSkipsExecution(t *testing.T) {
 	service := NewServiceWithCacheDir(runner, t.TempDir())
 
 	logs := make([]string, 0)
-	output, err := service.DiffContributionWithOptions(context.Background(), "/tmp/work/20", EnsureOptions{
+	output, err := service.DiffContributionWithOptions(context.Background(), "/tmp/work/20", "", EnsureOptions{
 		Verbose: true,
 		WhatIf:  true,
 		Logger: func(format string, args ...any) {
@@ -106,4 +106,30 @@ func TestDiffContributionDeterministicAcrossReruns(t *testing.T) {
 	if !reflect.DeepEqual(first, second) {
 		t.Fatalf("expected deterministic diff outputs across reruns, first=%#v second=%#v", first, second)
 	}
+}
+
+func TestDiffContributionWithBaseRefUsesCustomRange(t *testing.T) {
+commands := make([][]string, 0)
+runner := stubRunner{runFunc: func(_ context.Context, name string, args ...string) (string, error) {
+recorded := append([]string{name}, args...)
+commands = append(commands, recorded)
+return "", nil
+}}
+
+service := NewServiceWithCacheDir(runner, t.TempDir())
+output, err := service.DiffContributionWithOptions(context.Background(), "/tmp/work/pr-5", "deadbeef", EnsureOptions{})
+if err != nil {
+t.Fatalf("expected diff with base ref to succeed, got %v", err)
+}
+
+if output.Range != "deadbeef..HEAD" {
+t.Fatalf("expected custom base range, got %q", output.Range)
+}
+
+for _, cmd := range commands {
+joined := strings.Join(cmd, " ")
+if strings.Contains(joined, "diff") && !strings.Contains(joined, "deadbeef..HEAD") {
+t.Fatalf("expected all diff commands to use custom range, got %q", joined)
+}
+}
 }

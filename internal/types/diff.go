@@ -7,6 +7,7 @@ type DiffOutput struct {
 	Provider string   `json:"provider,omitempty"`
 	BareDir  string   `json:"bareDir,omitempty"`
 	MergeRef string   `json:"mergeRef,omitempty"`
+	BaseRef  string   `json:"baseRef,omitempty"`
 	WorkDir  string   `json:"workDir,omitempty"`
 	Range    string   `json:"range"`
 	Files    []string `json:"files"`

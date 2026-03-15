@@ -51,7 +51,7 @@ var diffCmd = &cobra.Command{
 		}
 
 		service := mirrorServiceFactory()
-		diffOutput, err := service.DiffContributionWithOptions(context.Background(), resolvedWorkDir, git.EnsureOptions{
+		diffOutput, err := service.DiffContributionWithOptions(context.Background(), resolvedWorkDir, strings.TrimSpace(input.BaseRef), git.EnsureOptions{
 			Verbose: verbose || whatIf,
 			WhatIf:  whatIf,
 			Logger: func(format string, args ...any) {
@@ -68,6 +68,7 @@ var diffCmd = &cobra.Command{
 		diffOutput.Provider = input.Provider
 		diffOutput.BareDir = input.BareDir
 		diffOutput.MergeRef = input.MergeRef
+		diffOutput.BaseRef = input.BaseRef
 		diffOutput.WorkDir = resolvedWorkDir
 
 		payload, err := json.Marshal(diffOutput)

@@ -330,3 +330,61 @@ func TestEnsureMirrorWhatIfLogsWithoutExecutingCommands(t *testing.T) {
 		t.Fatalf("expected zero external commands executed in what-if mode, got %d", len(runner.commands))
 	}
 }
+
+func TestFetchPRHeadRefUsesPRRNamespaceDestination(t *testing.T) {
+runner := &recorderRunner{}
+service := NewServiceWithCacheDir(runner, t.TempDir())
+
+headRef, err := service.FetchPRHeadRef(context.Background(), "/tmp/repo.git", "origin", 42, EnsureOptions{})
+if err != nil {
+t.Fatalf("expected head ref fetch to succeed, got %v", err)
+}
+
+if headRef != "refs/prr/pull/42/head" {
+t.Fatalf("expected head ref namespace, got %q", headRef)
+}
+
+if len(runner.commands) != 1 {
+t.Fatalf("expected one fetch command, got %d", len(runner.commands))
+}
+
+command := strings.Join(runner.commands[0], " ")
+if !strings.Contains(command, "fetch origin pull/42/head:refs/prr/pull/42/head") {
+t.Fatalf("expected fetch destination to target PRR namespace, got %q", command)
+}
+}
+
+func TestFetchPRHeadRefClassifiesErrorsAsProviderFailures(t *testing.T) {
+runner := &recorderRunner{err: errors.New("no head ref")}
+service := NewServiceWithCacheDir(runner, t.TempDir())
+
+_, err := service.FetchPRHeadRef(context.Background(), "/tmp/repo.git", "origin", 99, EnsureOptions{})
+if err == nil {
+t.Fatalf("expected provider-classified error")
+}
+
+if !strings.Contains(err.Error(), "PROVIDER_RESOLUTION") {
+t.Fatalf("expected provider-classified error, got %v", err)
+}
+}
+
+func TestResolveMergeBaseIssuesMergeBaseCommand(t *testing.T) {
+runner := stubRunner{runFunc: func(_ context.Context, _ string, args ...string) (string, error) {
+joined := strings.Join(args, " ")
+if strings.Contains(joined, "merge-base") {
+return "abc1234def5678\n", nil
+}
+return "", nil
+}}
+
+service := NewServiceWithCacheDir(runner, t.TempDir())
+
+base, err := service.ResolveMergeBase(context.Background(), "/tmp/repo.git", "refs/prr/pull/5/head", "HEAD", EnsureOptions{})
+if err != nil {
+t.Fatalf("expected merge base resolution to succeed, got %v", err)
+}
+
+if base != "abc1234def5678" {
+t.Fatalf("expected trimmed merge base SHA, got %q", base)
+}
+}
