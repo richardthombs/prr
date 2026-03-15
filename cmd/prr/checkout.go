@@ -92,6 +92,7 @@ var checkoutCmd = &cobra.Command{
 			if prRef.BaseSHA == "" {
 				return provider.EnrichmentRequiredError(prRef.Provider)
 			}
+			warnf("merge ref unavailable (closed PR?), falling back to head ref with base %s", prRef.BaseSHA[:min(len(prRef.BaseSHA), 12)])
 			headRef, headErr := service.FetchPRHeadRef(context.Background(), bareDir, prRef.Remote, prRef.PRID, commonOpts)
 			if headErr != nil {
 				return headErr
