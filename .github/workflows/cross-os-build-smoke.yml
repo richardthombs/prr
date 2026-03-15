@@ -59,7 +59,7 @@ jobs:
           }
           $helpText = Get-Content -Raw $helpStdoutPath
           $helpStderr = Get-Content -Raw $helpStderrPath
-          if (($helpText | Out-String) -notmatch "Use:\s+prr") {
+          if (($helpText | Out-String) -notmatch "Usage:\s+prr") {
             throw "prr --help output did not include expected usage contract"
           }
           if (-not [string]::IsNullOrWhiteSpace($helpStderr)) {
