@@ -36,3 +36,68 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+
+  brew-bottle:
+    needs: goreleaser
+    # Only create bottles for full releases, not pre-releases (tags without '-')
+    if: startsWith(github.ref, 'refs/tags/') && !contains(github.ref_name, '-')
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-latest  # macOS 15 Sequoia, arm64
+          - runner: macos-13      # macOS 13 Ventura, x86_64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - name: Add Homebrew tap
+        run: brew tap richardthombs/prr
+
+      - name: Install formula for bottling
+        run: brew install --build-bottle richardthombs/prr/prr
+
+      - name: Create bottle
+        run: |
+          brew bottle \
+            --root-url "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}" \
+            --json \
+            richardthombs/prr/prr
+
+      - name: Upload bottle tarball to release
+        run: gh release upload "${{ github.ref_name }}" ./*.bottle.tar.gz --clobber
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload bottle JSON as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bottle-json-${{ matrix.runner }}
+          path: "*.bottle.json"
+
+  update-formula:
+    needs: brew-bottle
+    runs-on: macos-latest
+    steps:
+      - name: Download all bottle JSONs
+        uses: actions/download-artifact@v4
+        with:
+          pattern: bottle-json-*
+          merge-multiple: true
+
+      - name: Add Homebrew tap
+        run: brew tap richardthombs/prr
+
+      - name: Merge bottle metadata into formula
+        run: brew bottle --merge --write --no-commit ./*.bottle.json
+
+      - name: Push updated formula to tap
+        env:
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          cd "$(brew --repo richardthombs/prr)"
+          git config user.email "github-actions@github.com"
+          git config user.name "github-actions[bot]"
+          git add Formula/prr.rb
+          git diff --quiet && git diff --staged --quiet && echo 'No changes to formula' && exit 0
+          git commit -m "Update bottles for ${{ github.ref_name }}"
+          git remote set-url origin "https://x-access-token:${HOMEBREW_TAP_TOKEN}@github.com/richardthombs/homebrew-prr.git"
+          git push origin HEAD:main
