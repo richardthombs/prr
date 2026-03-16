@@ -40,7 +40,8 @@ if [[ -z "$VERSION" ]]; then
   exit 1
 fi
 
-ARCHIVE="${BINARY}_${VERSION}_${OS}_${ARCH}.tar.gz"
+VERSION_NUM="${VERSION#v}"
+ARCHIVE="${BINARY}_${VERSION_NUM}_${OS}_${ARCH}.tar.gz"
 URL="https://github.com/${REPO}/releases/download/${VERSION}/${ARCHIVE}"
 
 echo "Installing prr ${VERSION} (${OS}/${ARCH}) to ${INSTALL_DIR}..."
