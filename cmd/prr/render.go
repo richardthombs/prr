@@ -11,6 +11,27 @@ import (
 func renderMarkdown(review types.Review) string {
 	var builder strings.Builder
 
+	if review.PRTitle != "" {
+		builder.WriteString(fmt.Sprintf("# PR Review: %s\n", review.PRTitle))
+		if len(review.WorkItems) > 0 {
+			parts := make([]string, 0, len(review.WorkItems))
+			for _, wi := range review.WorkItems {
+				if wi.URL != "" {
+					parts = append(parts, fmt.Sprintf("[%s: %s](%s)", wi.ID, wi.Title, wi.URL))
+				} else {
+					parts = append(parts, fmt.Sprintf("%s: %s", wi.ID, wi.Title))
+				}
+			}
+			builder.WriteString(fmt.Sprintf("**Related:** %s\n", strings.Join(parts, ", ")))
+		}
+		if review.WorkItemNote != "" {
+			builder.WriteString(fmt.Sprintf("**Note:** %s\n", review.WorkItemNote))
+		}
+		builder.WriteString("\n")
+	} else if review.WorkItemNote != "" {
+		builder.WriteString(fmt.Sprintf("**Note:** %s\n\n", review.WorkItemNote))
+	}
+
 	builder.WriteString("## Summary\n")
 	builder.WriteString(review.Summary)
 	builder.WriteString("\n\n")

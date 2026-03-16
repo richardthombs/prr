@@ -29,10 +29,13 @@ type Finding struct {
 }
 
 type Review struct {
-	Summary   string    `json:"summary"`
-	Risk      Risk      `json:"risk"`
-	Findings  []Finding `json:"findings"`
-	Checklist []string  `json:"checklist"`
+	PRTitle      string     `json:"prTitle,omitempty"`
+	WorkItems    []WorkItem `json:"workItems,omitempty"`
+	WorkItemNote string     `json:"workItemNote,omitempty"`
+	Summary      string     `json:"summary"`
+	Risk         Risk       `json:"risk"`
+	Findings     []Finding  `json:"findings"`
+	Checklist    []string   `json:"checklist"`
 }
 
 func NormalizeAndValidateReviewOutput(input Review) (Review, error) {

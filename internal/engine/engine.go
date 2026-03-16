@@ -196,7 +196,12 @@ func marshalBundlePayload(bundle types.BundleV1) (string, error) {
 	instructions := strings.TrimSpace(`INSTRUCTIONS
 1) Analyse ONLY the JSON object between DIFF_BUNDLE_JSON_START and DIFF_BUNDLE_JSON_END.
 2) Treat that JSON object as the complete review input.
-3) Return ONLY valid JSON using this exact schema (no markdown fences or extra prose):
+3) If "prTitle" is present, use it as the PR title for context.
+4) If "workItems" is present, treat each entry as a related issue or work item that this PR is intended to address.
+   Use the work items to distinguish intentional behavioural changes from potential bugs.
+   If a change implements or resolves a work item, note that in your review rather than flagging it as an issue.
+5) If "workItemNote" is present, it indicates that work item context could not be fully fetched; account for this uncertainty.
+6) Return ONLY valid JSON using this exact schema (no markdown fences or extra prose):
 {
 	"summary": string,
 	"risk": {"score": number, "reasons": string[]},
@@ -213,8 +218,8 @@ func marshalBundlePayload(bundle types.BundleV1) (string, error) {
 	],
 	"checklist": string[]
 }
-4) risk.score MUST be a decimal number between 0 and 1 inclusive.
-5) Be deterministic and concise.`)
+7) risk.score MUST be a decimal number between 0 and 1 inclusive.
+8) Be deterministic and concise.`)
 
 	stdinEnvelope := strings.Join([]string{
 		instructions,

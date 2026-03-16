@@ -10,6 +10,7 @@ import (
 
 	"github.com/richardthombs/prr/internal/engine"
 	"github.com/richardthombs/prr/internal/git"
+	"github.com/richardthombs/prr/internal/provider"
 	"github.com/richardthombs/prr/internal/types"
 )
 
@@ -387,9 +388,11 @@ func TestReviewCommandEmitsDeterministicJSONShape(t *testing.T) {
 
 	originalMirrorFactory := mirrorServiceFactory
 	originalEngineFactory := reviewEngineFactory
+	originalContextFactory := prContextRunnerFactory
 	t.Cleanup(func() {
 		mirrorServiceFactory = originalMirrorFactory
 		reviewEngineFactory = originalEngineFactory
+		prContextRunnerFactory = originalContextFactory
 	})
 
 	runner := stubRunner{runFunc: func(_ context.Context, _ string, _ ...string) (string, error) {
@@ -417,6 +420,11 @@ func TestReviewCommandEmitsDeterministicJSONShape(t *testing.T) {
 				Checklist: []string{"Run CI"},
 			}, nil
 		})
+	}
+	prContextRunnerFactory = func() provider.CLIRunner {
+		return stubRunner{runFunc: func(_ context.Context, _ string, _ ...string) (string, error) {
+			return `{"title":"","closingIssuesReferences":[]}`, nil
+		}}
 	}
 
 	stdout := &bytes.Buffer{}
@@ -499,6 +507,91 @@ func TestReviewCommandEmitsDeterministicMarkdown(t *testing.T) {
 
 
 
+
+
+
+
+func TestRenderMarkdownIncludesPRTitleAsHeading(t *testing.T) {
+	review := deterministicReview()
+	review.PRTitle = "Fix login bug"
+
+	md := renderMarkdown(review)
+
+	if !strings.HasPrefix(md, "# PR Review: Fix login bug\n") {
+		t.Fatalf("expected markdown to start with PR title heading, got %q", md[:min(len(md), 60)])
+	}
+	if !strings.Contains(md, "## Summary") {
+		t.Fatalf("expected markdown to still include summary section")
+	}
+}
+
+func TestRenderMarkdownIncludesWorkItemsUnderHeading(t *testing.T) {
+	review := deterministicReview()
+	review.PRTitle = "Fix login bug"
+	review.WorkItems = []types.WorkItem{
+		{ID: "#42", Title: "Login fails for new users", State: "open", URL: "https://github.com/acme/repo/issues/42"},
+	}
+
+	md := renderMarkdown(review)
+
+	if !strings.Contains(md, "# PR Review: Fix login bug") {
+		t.Fatalf("expected PR title heading in markdown")
+	}
+	if !strings.Contains(md, "**Related:**") {
+		t.Fatalf("expected Related section in markdown")
+	}
+	if !strings.Contains(md, "#42: Login fails for new users") {
+		t.Fatalf("expected work item in Related section")
+	}
+	if !strings.Contains(md, "https://github.com/acme/repo/issues/42") {
+		t.Fatalf("expected work item URL as link in markdown")
+	}
+}
+
+func TestRenderMarkdownIncludesWorkItemNoteWithoutTitle(t *testing.T) {
+	review := deterministicReview()
+	review.WorkItemNote = "work item context unavailable: gh CLI not available"
+
+	md := renderMarkdown(review)
+
+	if !strings.HasPrefix(md, "**Note:** work item context unavailable") {
+		t.Fatalf("expected note at start of markdown, got %q", md[:min(len(md), 80)])
+	}
+	if !strings.Contains(md, "## Summary") {
+		t.Fatalf("expected markdown to still include summary section")
+	}
+}
+
+func TestRenderMarkdownIncludesWorkItemNoteUnderPRTitle(t *testing.T) {
+	review := deterministicReview()
+	review.PRTitle = "Add feature"
+	review.WorkItemNote = "linked work items could not be fetched"
+
+	md := renderMarkdown(review)
+
+	if !strings.Contains(md, "# PR Review: Add feature") {
+		t.Fatalf("expected PR title heading")
+	}
+	if !strings.Contains(md, "**Note:** linked work items could not be fetched") {
+		t.Fatalf("expected note under heading")
+	}
+}
+
+func TestRenderMarkdownWithNoContextFieldsIsUnchanged(t *testing.T) {
+	review := deterministicReview()
+
+	md := renderMarkdown(review)
+
+	if strings.Contains(md, "# PR Review") {
+		t.Fatalf("expected no PR title heading when PRTitle is empty")
+	}
+	if strings.Contains(md, "**Note:**") {
+		t.Fatalf("expected no note when WorkItemNote is empty")
+	}
+	if !strings.HasPrefix(md, "## Summary") {
+		t.Fatalf("expected markdown to start with Summary when no context fields set")
+	}
+}
 
 
 

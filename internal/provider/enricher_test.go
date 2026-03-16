@@ -10,11 +10,15 @@ import (
 )
 
 type stubCLIRunner struct {
-	output string
-	err    error
+	output       string
+	err          error
+	runFuncMulti func(ctx context.Context, name string, args ...string) (string, error)
 }
 
-func (r *stubCLIRunner) Run(_ context.Context, _ string, _ ...string) (string, error) {
+func (r *stubCLIRunner) Run(ctx context.Context, name string, args ...string) (string, error) {
+	if r.runFuncMulti != nil {
+		return r.runFuncMulti(ctx, name, args...)
+	}
 	return r.output, r.err
 }
 

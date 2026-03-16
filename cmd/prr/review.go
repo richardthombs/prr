@@ -116,6 +116,8 @@ var reviewCmd = &cobra.Command{
 			prRef = provider.EnrichPRRef(context.Background(), prRef, prEnricherFactory(), warnf)
 		}
 
+		prCtx := provider.FetchPRContext(context.Background(), prRef, prContextRunnerFactory(), warnf)
+
 		service := mirrorServiceFactory()
 		commonOpts := git.EnsureOptions{
 			Verbose: verbose || whatIf,
@@ -210,6 +212,9 @@ var reviewCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		bundlePayload.PRTitle = prCtx.Title
+		bundlePayload.WorkItems = prCtx.WorkItems
+		bundlePayload.WorkItemNote = prCtx.Note
 		if err := bundle.ValidateV1Schema(bundlePayload); err != nil {
 			return err
 		}
@@ -232,6 +237,10 @@ var reviewCmd = &cobra.Command{
 
 			return apperrors.WrapEngine("failed to run review engine", err)
 		}
+
+		reviewOutput.PRTitle = prCtx.Title
+		reviewOutput.WorkItems = prCtx.WorkItems
+		reviewOutput.WorkItemNote = prCtx.Note
 
 		emitJSON, err := cmd.Flags().GetBool("json")
 		if err != nil {
