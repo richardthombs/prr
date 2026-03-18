@@ -116,6 +116,82 @@ func enrichAzureDevOps(ctx context.Context, ref types.PRRef, runner CLIRunner, w
 	return ref
 }
 
+// FetchLinkedWorkItems retrieves the ADO work items linked to a pull request and
+// returns their details. Only supported for the "azure-devops" provider; any
+// other provider returns nil. CLI errors are reported via warnf and a nil slice
+// is returned so that missing work items never block the review.
+func FetchLinkedWorkItems(ctx context.Context, ref types.PRRef, runner CLIRunner, warnf func(format string, args ...any)) []types.WorkItem {
+	if ref.Provider != "azure-devops" {
+		return nil
+	}
+
+	// List the work items linked to the PR.
+	listOut, err := runner.Run(ctx, "az", "repos", "pr", "work-items", "list",
+		"--id", strconv.Itoa(ref.PRID),
+		"--output", "json",
+	)
+	if err != nil {
+		warnf("work item list unavailable (az cli): %v", err)
+		return nil
+	}
+
+	var listed []struct {
+		ID int `json:"id"`
+	}
+	if jsonErr := json.Unmarshal([]byte(listOut), &listed); jsonErr != nil {
+		warnf("work item list skipped: could not parse az output: %v", jsonErr)
+		return nil
+	}
+
+	if len(listed) == 0 {
+		return nil
+	}
+
+	// Fetch details for each linked work item.
+	workItems := make([]types.WorkItem, 0, len(listed))
+	for _, item := range listed {
+		wi, fetchErr := fetchWorkItemDetails(ctx, item.ID, runner)
+		if fetchErr != nil {
+			warnf("work item %d fetch failed: %v", item.ID, fetchErr)
+			continue
+		}
+		workItems = append(workItems, wi)
+	}
+
+	return workItems
+}
+
+func fetchWorkItemDetails(ctx context.Context, id int, runner CLIRunner) (types.WorkItem, error) {
+	out, err := runner.Run(ctx, "az", "boards", "work-item", "show",
+		"--id", strconv.Itoa(id),
+		"--output", "json",
+	)
+	if err != nil {
+		return types.WorkItem{}, err
+	}
+
+	var resp struct {
+		ID     int `json:"id"`
+		Fields struct {
+			Title        string `json:"System.Title"`
+			Description  string `json:"System.Description"`
+			WorkItemType string `json:"System.WorkItemType"`
+			State        string `json:"System.State"`
+		} `json:"fields"`
+	}
+	if jsonErr := json.Unmarshal([]byte(out), &resp); jsonErr != nil {
+		return types.WorkItem{}, fmt.Errorf("could not parse work item JSON: %w", jsonErr)
+	}
+
+	return types.WorkItem{
+		ID:          resp.ID,
+		Type:        resp.Fields.WorkItemType,
+		Title:       resp.Fields.Title,
+		Description: resp.Fields.Description,
+		State:       resp.Fields.State,
+	}, nil
+}
+
 // githubRepoSlug extracts "owner/repo" from a GitHub HTTPS URL.
 func githubRepoSlug(repoURL string) string {
 	trimmed := strings.TrimSpace(repoURL)

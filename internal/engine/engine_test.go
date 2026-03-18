@@ -335,3 +335,35 @@ func TestCLIAdapterWrapsRunnerError(t *testing.T) {
 		t.Fatalf("expected wrapped runner error, got %v", err)
 	}
 }
+
+func TestMarshalBundlePayloadIncludesWorkItemInstructionWhenPresent(t *testing.T) {
+	bundle := types.BundleV1{
+		Version: "v1", Range: "HEAD^1..HEAD", Files: []string{"a.go"}, Stat: "1 file changed", Patch: "diff --git",
+		WorkItems: []types.WorkItem{{ID: 123, Type: "User Story", Title: "Add login", State: "Active"}},
+	}
+
+	payload, err := marshalBundlePayload(bundle)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if !strings.Contains(payload, "workItems") {
+		t.Fatalf("expected workItems in bundle JSON, got %q", payload)
+	}
+	if !strings.Contains(payload, "divergences") {
+		t.Fatalf("expected divergence instruction when work items are present, got %q", payload)
+	}
+}
+
+func TestMarshalBundlePayloadOmitsWorkItemInstructionWhenAbsent(t *testing.T) {
+	bundle := types.BundleV1{
+		Version: "v1", Range: "HEAD^1..HEAD", Files: []string{"a.go"}, Stat: "1 file changed", Patch: "diff --git",
+	}
+
+	payload, err := marshalBundlePayload(bundle)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if strings.Contains(payload, "divergences") {
+		t.Fatalf("expected no divergence instruction when work items are absent, got %q", payload)
+	}
+}

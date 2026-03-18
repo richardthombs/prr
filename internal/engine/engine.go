@@ -216,6 +216,10 @@ func marshalBundlePayload(bundle types.BundleV1) (string, error) {
 4) risk.score MUST be a decimal number between 0 and 1 inclusive.
 5) Be deterministic and concise.`)
 
+	if len(bundle.WorkItems) > 0 {
+		instructions += "\n6) The bundle includes a \"workItems\" array with ADO work items linked to this PR. Review the PR changes against each work item's title and description, and report any divergences — such as missing requirements, scope creep, or unaddressed acceptance criteria — as findings or checklist items."
+	}
+
 	stdinEnvelope := strings.Join([]string{
 		instructions,
 		"",

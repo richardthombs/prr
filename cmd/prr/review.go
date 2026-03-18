@@ -214,6 +214,11 @@ var reviewCmd = &cobra.Command{
 			return err
 		}
 
+		// Enrich the bundle with ADO work items linked to this PR.
+		if prRef.Provider == "azure-devops" {
+			bundlePayload.WorkItems = provider.FetchLinkedWorkItems(context.Background(), prRef, prEnricherFactory(), warnf)
+		}
+
 		reviewOutput, err := reviewEngineFactory().Review(context.Background(), engine.ReviewInput{
 			Bundle:  bundlePayload,
 			WorkDir: workDir,
