@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/richardthombs/prr/internal/bundle"
+	"github.com/richardthombs/prr/internal/config"
 	"github.com/richardthombs/prr/internal/engine"
 	apperrors "github.com/richardthombs/prr/internal/errors"
 	"github.com/richardthombs/prr/internal/git"
@@ -221,11 +222,12 @@ var reviewCmd = &cobra.Command{
 		}
 
 		reviewOutput, err := reviewEngineFactory().Review(context.Background(), engine.ReviewInput{
-			Bundle:  bundlePayload,
-			WorkDir: workDir,
-			Model:   model,
-			Verbose: verbose,
-			WhatIf:  whatIf,
+			Bundle:             bundlePayload,
+			WorkDir:            workDir,
+			Model:              model,
+			Verbose:            verbose,
+			WhatIf:             whatIf,
+			ReviewInstructions: loadReviewInstructions(),
 			Logger: func(format string, args ...any) {
 				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "[prr] "+format+"\n", args...)
 			},
@@ -333,4 +335,13 @@ func firstNonEmpty(primary, fallback string) string {
 	}
 
 	return strings.TrimSpace(fallback)
+}
+
+func loadReviewInstructions() string {
+	userCfg, err := config.LoadUserConfig()
+	if err != nil {
+		return config.DefaultReviewInstructions
+	}
+
+	return config.ResolveReviewInstructions(userCfg)
 }

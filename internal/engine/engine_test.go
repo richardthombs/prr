@@ -72,6 +72,9 @@ func TestCLIAdapterBuildsCommandWithStdinEnvelopeModelAndWorkDir(t *testing.T) {
 	if !strings.Contains(capturedStdin, "risk.score MUST be a decimal number between 0 and 1 inclusive") {
 		t.Fatalf("expected explicit risk score range instructions, got %q", capturedStdin)
 	}
+	if !strings.Contains(capturedStdin, defaultReviewInstructions) {
+		t.Fatalf("expected default review instructions in stdin payload, got %q", capturedStdin)
+	}
 	if !strings.Contains(capturedStdin, `"version":"v1"`) || !strings.Contains(capturedStdin, `"patch":"diff --git"`) {
 		t.Fatalf("expected bundle JSON on stdin, got %q", capturedStdin)
 	}
@@ -333,5 +336,59 @@ func TestCLIAdapterWrapsRunnerError(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "agent command execution failed") {
 		t.Fatalf("expected wrapped runner error, got %v", err)
+	}
+}
+
+func TestCLIAdapterUsesCustomReviewInstructions(t *testing.T) {
+	capturedStdin := ""
+	customInstructions := "Focus on security vulnerabilities and API contract violations."
+
+	adapter := &CLIAgentAdapter{
+		config: DefaultAgentConfig(),
+		runner: fakeRunner{run: func(_ context.Context, _ string, _ []string, _ string, stdinPayload string) (commandResult, error) {
+			capturedStdin = stdinPayload
+			return commandResult{Stdout: `{"summary":"ok","risk":{"score":0.1,"reasons":["low"]},"findings":[],"checklist":["run tests"]}`}, nil
+		}},
+	}
+
+	_, err := adapter.Review(context.Background(), ReviewInput{
+		Bundle:             types.BundleV1{Version: "v1", Range: "HEAD^1..HEAD", Files: []string{}, Stat: "ok", Patch: "ok"},
+		WorkDir:            "/tmp/work",
+		ReviewInstructions: customInstructions,
+	})
+	if err != nil {
+		t.Fatalf("expected success with custom instructions, got %v", err)
+	}
+	if !strings.Contains(capturedStdin, customInstructions) {
+		t.Fatalf("expected custom instructions in stdin payload, got %q", capturedStdin)
+	}
+	if strings.Contains(capturedStdin, defaultReviewInstructions) {
+		t.Fatalf("expected default instructions to be replaced by custom, got %q", capturedStdin)
+	}
+	if !strings.Contains(capturedStdin, "INSTRUCTIONS") {
+		t.Fatalf("expected pipeline INSTRUCTIONS marker in payload, got %q", capturedStdin)
+	}
+}
+
+func TestCLIAdapterUsesDefaultReviewInstructionsWhenEmpty(t *testing.T) {
+	capturedStdin := ""
+
+	adapter := &CLIAgentAdapter{
+		config: DefaultAgentConfig(),
+		runner: fakeRunner{run: func(_ context.Context, _ string, _ []string, _ string, stdinPayload string) (commandResult, error) {
+			capturedStdin = stdinPayload
+			return commandResult{Stdout: `{"summary":"ok","risk":{"score":0.1,"reasons":["low"]},"findings":[],"checklist":["run tests"]}`}, nil
+		}},
+	}
+
+	_, err := adapter.Review(context.Background(), ReviewInput{
+		Bundle:  types.BundleV1{Version: "v1", Range: "HEAD^1..HEAD", Files: []string{}, Stat: "ok", Patch: "ok"},
+		WorkDir: "/tmp/work",
+	})
+	if err != nil {
+		t.Fatalf("expected success, got %v", err)
+	}
+	if !strings.Contains(capturedStdin, defaultReviewInstructions) {
+		t.Fatalf("expected default instructions in stdin payload, got %q", capturedStdin)
 	}
 }
