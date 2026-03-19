@@ -76,7 +76,7 @@ jobs:
           set -euo pipefail
           shopt -s nullglob
 
-          files=(./*.bottle.tar.gz)
+          files=(./*.bottle*.tar.gz)
           if [ ${#files[@]} -eq 0 ]; then
             echo "Expected at least one bottle tarball, but none were found in the working directory."
             pwd
