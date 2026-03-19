@@ -3,11 +3,21 @@ package provider
 import (
 	"context"
 	"errors"
+	"io"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
+	apperrors "github.com/richardthombs/prr/internal/errors"
 	"github.com/richardthombs/prr/internal/types"
 )
+
+type roundTripFunc func(req *http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+	return f(req)
+}
 
 type stubCLIRunner struct {
 	output  string
@@ -189,5 +199,103 @@ func TestDiscoverAzureIssuesReturnsNormalizedWorkItemData(t *testing.T) {
 	}
 	if item.Metadata["workItemType"] != "Bug" || item.Metadata["teamProject"] != "project" {
 		t.Fatalf("unexpected metadata: %+v", item.Metadata)
+	}
+}
+
+func TestDiscoverGitHubIssuesFallsBackToRESTWhenCLIFails(t *testing.T) {
+	t.Setenv(issueProviderModeEnv, string(issueProviderModeCLIREST))
+	t.Setenv(githubTokenEnv, "test-token")
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/repos/acme/repo/pulls/17/issues" {
+			t.Fatalf("unexpected path: %s", r.URL.Path)
+		}
+		if got := r.Header.Get("Authorization"); got != "Bearer test-token" {
+			t.Fatalf("expected bearer auth header, got %q", got)
+		}
+		_, _ = w.Write([]byte(`[{"number":77,"html_url":"https://github.com/acme/repo/issues/77","title":"REST issue","body":"REST body","state":"open","labels":[{"name":"rest"}]}]`))
+	}))
+	defer server.Close()
+	t.Setenv(githubAPIBaseURLEnv, server.URL)
+
+	p := NewDefaultProvider()
+	runner := &stubCLIRunner{err: errors.New("gh not found")}
+
+	issues, err := p.DiscoverIssues(context.Background(), types.PRRef{
+		PRID:     17,
+		Provider: "github",
+		RepoURL:  "https://github.com/acme/repo",
+	}, runner)
+	if err != nil {
+		t.Fatalf("expected rest fallback success, got %v", err)
+	}
+	if len(issues) != 1 || issues[0].ID != "77" {
+		t.Fatalf("unexpected issues from rest fallback: %+v", issues)
+	}
+}
+
+func TestDiscoverAzureIssuesFallsBackToRESTWhenCLIFails(t *testing.T) {
+	t.Setenv(issueProviderModeEnv, string(issueProviderModeCLIREST))
+	t.Setenv(azureTokenEnv, "ado-token")
+
+	p := &defaultProvider{
+		mode: issueProviderModeCLIREST,
+		httpClient: &http.Client{
+			Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+				var body string
+				switch req.URL.Path {
+				case "/org/project/_apis/git/repositories/repo/pullRequests/55/workitems":
+					body = `{"value":[{"id":"1001"}]}`
+				case "/org/project/_apis/wit/workitems/1001":
+					body = `{"id":1001,"url":"https://dev.azure.com/org/project/_apis/wit/workItems/1001","fields":{"System.Title":"REST work item","System.State":"Active","System.WorkItemType":"Bug","System.Tags":"ops; urgent","System.Description":"From REST","System.TeamProject":"project"}}`
+				default:
+					t.Fatalf("unexpected path: %s", req.URL.Path)
+				}
+
+				return &http.Response{
+					StatusCode: http.StatusOK,
+					Body:       io.NopCloser(strings.NewReader(body)),
+					Header:     make(http.Header),
+					Request:    req,
+				}, nil
+			}),
+		},
+		azureDevOpsToken: "ado-token",
+		githubAPIBaseURL: "https://api.github.com",
+	}
+	runner := &stubCLIRunner{err: errors.New("az not found")}
+
+	issues, err := p.DiscoverIssues(context.Background(), types.PRRef{
+		PRID:     55,
+		Provider: "azure-devops",
+		RepoURL:  "https://dev.azure.com/org/project/_git/repo",
+	}, runner)
+	if err != nil {
+		t.Fatalf("expected rest fallback success, got %v", err)
+	}
+	if len(issues) != 1 || issues[0].ID != "1001" {
+		t.Fatalf("unexpected issues from rest fallback: %+v", issues)
+	}
+}
+
+func TestDiscoverIssuesRejectsInvalidModeConfiguration(t *testing.T) {
+	t.Setenv(issueProviderModeEnv, "bogus")
+	p := NewDefaultProvider()
+
+	_, err := p.DiscoverIssues(context.Background(), types.PRRef{
+		PRID:     1,
+		Provider: "github",
+		RepoURL:  "https://github.com/acme/repo",
+	}, &stubCLIRunner{})
+	if err == nil {
+		t.Fatalf("expected config error for invalid mode")
+	}
+
+	appErr, ok := err.(*apperrors.AppError)
+	if !ok {
+		t.Fatalf("expected app error, got %T", err)
+	}
+	if appErr.Class != apperrors.ClassConfig {
+		t.Fatalf("expected config error class, got %s", appErr.Class)
 	}
 }

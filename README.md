@@ -76,6 +76,11 @@ prr checkout "https://github.com/<owner>/<repo>/pull/<id>" | prr review
 
 ## Provider auth requirements for issue enrichment
 
-- GitHub reviews require authenticated `gh` CLI access for issue discovery.
-- Azure DevOps reviews require authenticated `az` CLI access for PR/work-item discovery.
-- If issue discovery fails, `prr review` now returns a clear provider error instead of silently continuing.
+- PRR issue discovery mode is controlled by `PRR_ISSUE_PROVIDER_MODE`:
+  - `cli-rest` (default): use provider CLI first, then automatically fall back to REST on CLI failure/unavailability.
+  - `cli`: CLI-only discovery (no REST fallback).
+  - `rest`: REST-only discovery.
+- GitHub REST fallback requires `PRR_GITHUB_TOKEN`. Optionally set `PRR_GITHUB_API_BASE_URL` for non-default API base URLs (default: `https://api.github.com`).
+- Azure DevOps REST fallback requires `PRR_AZURE_DEVOPS_TOKEN`.
+- CLI mode uses provider CLIs as before (`gh` for GitHub, `az` for Azure DevOps).
+- If both CLI and REST paths fail, `prr review` returns a provider error including both failure paths for diagnosis.
