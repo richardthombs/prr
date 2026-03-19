@@ -213,8 +213,14 @@ func marshalBundlePayload(bundle types.BundleV1) (string, error) {
 	],
 	"checklist": string[]
 }
-4) risk.score MUST be a decimal number between 0 and 1 inclusive.
-5) Be deterministic and concise.`)
+4) summary MUST be concise and deterministic with:
+   - Issue summary in at most 2 paragraphs total across all linked issues.
+   - PR summary in at most 2 paragraphs focused on what changed (not critique).
+   - If needed, separate issue and PR summary blocks using exactly one blank line.
+5) findings must support final markdown grouping under headings:
+   Blocker, Important, Suggestion, Nitpick (map Nitpick to severity "nit").
+6) risk.score MUST be a decimal number between 0 and 1 inclusive.
+7) Be deterministic and concise.`)
 
 	stdinEnvelope := strings.Join([]string{
 		instructions,

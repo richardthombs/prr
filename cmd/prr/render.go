@@ -2,31 +2,44 @@ package main
 
 import (
 	"fmt"
+	"net/url"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/richardthombs/prr/internal/types"
 )
 
-func renderMarkdown(review types.Review) string {
+func renderMarkdown(review types.Review, prID int, repoURL string, issues []types.RelatedIssue) string {
 	var builder strings.Builder
 
+	issueSummary, prSummary := splitIssueAndPRSummaries(review.Summary)
+
 	builder.WriteString("## Summary\n")
-	builder.WriteString(review.Summary)
+	builder.WriteString(renderPRLine(prID, repoURL))
+	builder.WriteString("\n")
+	builder.WriteString(renderIssuesLine(issues))
 	builder.WriteString("\n\n")
 
-	builder.WriteString("## Risk\n")
-	builder.WriteString(fmt.Sprintf("Score: %.2f\n", review.Risk.Score))
-	if len(review.Risk.Reasons) > 0 {
-		for _, reason := range review.Risk.Reasons {
-			builder.WriteString("- ")
-			builder.WriteString(reason)
-			builder.WriteString("\n")
-		}
+	builder.WriteString("### Issue summary\n")
+	builder.WriteString(issueSummary)
+	builder.WriteString("\n\n")
+
+	builder.WriteString("### PR summary\n")
+	builder.WriteString(prSummary)
+	builder.WriteString("\n\n")
+
+	builder.WriteString("## Review\n")
+	builder.WriteString("### A) Issue resolution assessment\n")
+	builder.WriteString(fmt.Sprintf("Risk score: %.2f\n", review.Risk.Score))
+	for _, reason := range review.Risk.Reasons {
+		builder.WriteString("- ")
+		builder.WriteString(reason)
+		builder.WriteString("\n")
 	}
 	builder.WriteString("\n")
 
-	builder.WriteString("## Findings\n")
+	builder.WriteString("### B) PR change review conclusions\n")
 	severityOrder := []string{"blocker", "important", "suggestion", "nit"}
 	grouped := map[string][]types.Finding{}
 	for _, finding := range review.Findings {
@@ -35,7 +48,11 @@ func renderMarkdown(review types.Review) string {
 
 	for _, severity := range severityOrder {
 		findings := grouped[severity]
+		builder.WriteString("### ")
+		builder.WriteString(severityHeading(severity))
+		builder.WriteString("\n")
 		if len(findings) == 0 {
+			builder.WriteString("- None.\n\n")
 			continue
 		}
 
@@ -50,24 +67,10 @@ func renderMarkdown(review types.Review) string {
 			return findings[i].File < findings[j].File
 		})
 
-		builder.WriteString("### ")
-		builder.WriteString(severityHeading(severity))
-		builder.WriteString("\n")
 		for _, finding := range findings {
 			builder.WriteString(fmt.Sprintf("- [%s] %s:%d (%s) - %s\n", finding.ID, finding.File, finding.Line, finding.Category, finding.Message))
 			builder.WriteString(fmt.Sprintf("  Suggestion: %s\n", finding.Suggestion))
 		}
-		builder.WriteString("\n")
-	}
-
-	if len(review.Findings) == 0 {
-		builder.WriteString("No findings.\n\n")
-	}
-
-	builder.WriteString("## Checklist\n")
-	for _, item := range review.Checklist {
-		builder.WriteString("- [ ] ")
-		builder.WriteString(item)
 		builder.WriteString("\n")
 	}
 
@@ -83,8 +86,114 @@ func severityHeading(severity string) string {
 	case "suggestion":
 		return "Suggestion"
 	case "nit":
-		return "Nit"
+		return "Nitpick"
 	default:
 		return severity
 	}
+}
+
+func renderPRLine(prID int, repoURL string) string {
+	if prID <= 0 {
+		return "PR: N/A"
+	}
+	prURL := buildPRURL(repoURL, prID)
+	if prURL == "" {
+		return fmt.Sprintf("PR: #%d", prID)
+	}
+	return fmt.Sprintf("PR: [#%d](%s)", prID, prURL)
+}
+
+func renderIssuesLine(issues []types.RelatedIssue) string {
+	if len(issues) == 0 {
+		return "Issues: None"
+	}
+
+	deduped := make(map[string]types.RelatedIssue, len(issues))
+	for _, issue := range issues {
+		trimmedID := strings.TrimSpace(issue.ID)
+		if trimmedID == "" {
+			continue
+		}
+		if _, exists := deduped[trimmedID]; exists {
+			continue
+		}
+		deduped[trimmedID] = issue
+	}
+	if len(deduped) == 0 {
+		return "Issues: None"
+	}
+
+	ids := make([]string, 0, len(deduped))
+	for id := range deduped {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+
+	refs := make([]string, 0, len(ids))
+	for _, id := range ids {
+		issue := deduped[id]
+		issueURL := strings.TrimSpace(issue.URL)
+		if issueURL != "" {
+			refs = append(refs, fmt.Sprintf("[#%s](%s)", id, issueURL))
+		} else {
+			refs = append(refs, fmt.Sprintf("#%s", id))
+		}
+	}
+	return "Issues: " + strings.Join(refs, ", ")
+}
+
+func buildPRURL(repoURL string, prID int) string {
+	if strings.TrimSpace(repoURL) == "" || prID <= 0 {
+		return ""
+	}
+	parsed, err := url.Parse(strings.TrimSpace(repoURL))
+	if err != nil {
+		return ""
+	}
+	parsed.Path = strings.TrimSuffix(parsed.Path, "/") + "/pull/" + strconv.Itoa(prID)
+	return parsed.String()
+}
+
+func splitIssueAndPRSummaries(summary string) (string, string) {
+	paragraphs := splitParagraphs(summary)
+	if len(paragraphs) == 0 {
+		return "No issue summary provided.", "No PR summary provided."
+	}
+
+	issueParas := paragraphs
+	if len(issueParas) > 2 {
+		issueParas = issueParas[:2]
+	}
+
+	prStart := len(issueParas)
+	prParas := []string{}
+	if prStart < len(paragraphs) {
+		prParas = paragraphs[prStart:]
+	}
+	if len(prParas) > 2 {
+		prParas = prParas[:2]
+	}
+	if len(prParas) == 0 {
+		prParas = issueParas
+	}
+
+	return strings.Join(issueParas, "\n\n"), strings.Join(prParas, "\n\n")
+}
+
+func splitParagraphs(text string) []string {
+	trimmed := strings.TrimSpace(text)
+	if trimmed == "" {
+		return nil
+	}
+
+	raw := strings.Split(trimmed, "\n\n")
+	paragraphs := make([]string, 0, len(raw))
+	for _, para := range raw {
+		cleaned := strings.TrimSpace(para)
+		if cleaned == "" {
+			continue
+		}
+		paragraphs = append(paragraphs, cleaned)
+	}
+	return paragraphs
 }

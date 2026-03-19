@@ -517,10 +517,15 @@ func TestReviewCommandEmitsDeterministicMarkdown(t *testing.T) {
 	}}, t.TempDir())
 	mirrorServiceFactory = func() *git.Service { return service }
 	issueRunnerFactory = func() provider.CLIRunner {
-		return stubRunner{runFunc: func(_ context.Context, _ string, _ ...string) (string, error) { return "[]", nil }}
+		return stubRunner{runFunc: func(_ context.Context, _ string, _ ...string) (string, error) {
+			return `{"data":{"repository":{"pullRequest":{"closingIssuesReferences":{"nodes":[{"number":13,"url":"https://github.com/acme/repo/issues/13","title":"Issue title","body":"Issue body","state":"OPEN","labels":{"nodes":[{"name":"bug"}]}}]}}}}}`, nil
+		}}
 	}
 	reviewEngineFactory = func() engine.ReviewEngine {
-		return reviewEngineFunc(func(_ context.Context, _ engine.ReviewInput) (types.Review, error) {
+		return reviewEngineFunc(func(_ context.Context, input engine.ReviewInput) (types.Review, error) {
+			if len(input.Bundle.Issues) != 1 || input.Bundle.Issues[0].ID != "13" {
+				t.Fatalf("expected issue hydration in bundle for markdown render test, got %+v", input.Bundle.Issues)
+			}
 			return deterministicReview(), nil
 		})
 	}
@@ -544,9 +549,22 @@ func TestReviewCommandEmitsDeterministicMarkdown(t *testing.T) {
 	if first != second {
 		t.Fatalf("expected deterministic markdown output when running review twice with same inputs")
 	}
-	for _, expected := range []string{"## Summary", "## Risk", "## Findings", "## Checklist"} {
+	for _, expected := range []string{
+		"## Summary",
+		"PR: [#42](https://github.com/acme/repo/pull/42)",
+		"Issues: [#13](https://github.com/acme/repo/issues/13)",
+		"### Issue summary",
+		"### PR summary",
+		"## Review",
+		"### A) Issue resolution assessment",
+		"### B) PR change review conclusions",
+		"### Blocker",
+		"### Important",
+		"### Suggestion",
+		"### Nitpick",
+	} {
 		if !strings.Contains(first, expected) {
-			t.Fatalf("expected rendered markdown to include %q", expected)
+			t.Fatalf("expected rendered markdown to include %q\noutput:\n%s", expected, first)
 		}
 	}
 }
