@@ -52,7 +52,7 @@ func TestCheckoutEmitsPipelineEquivalentPayload(t *testing.T) {
 
 		joined := strings.Join(args, " ")
 		if !strings.Contains(joined, "clone --mirror") &&
-			!strings.Contains(joined, "fetch origin pull/987654321/merge:refs/prr/pull/987654321/merge") &&
+			!strings.Contains(joined, "fetch --progress origin pull/987654321/merge:refs/prr/pull/987654321/merge") &&
 			!strings.Contains(joined, "worktree add --detach") {
 			t.Fatalf("unexpected git invocation %q", joined)
 		}
@@ -138,7 +138,7 @@ func TestCheckoutWhatIfSkipsExternalExecution(t *testing.T) {
 	if !strings.Contains(stderrText, "exec: git clone --mirror") {
 		t.Fatalf("expected mirror command preview in stderr, got %q", stderrText)
 	}
-	if !strings.Contains(stderrText, "exec: git -C") || !strings.Contains(stderrText, "fetch origin pull/123456789/merge:refs/prr/pull/123456789/merge") {
+	if !strings.Contains(stderrText, "exec: git -C") || !strings.Contains(stderrText, "fetch --progress origin pull/123456789/merge:refs/prr/pull/123456789/merge") {
 		t.Fatalf("expected fetch command preview in stderr, got %q", stderrText)
 	}
 	if !strings.Contains(stderrText, "worktree add --detach") && !strings.Contains(stderrText, "reset --hard") {

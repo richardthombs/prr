@@ -161,8 +161,8 @@ func TestEnsureMirrorUsesUpdateForExistingMirror(t *testing.T) {
 	}
 
 	command := strings.Join(runner.commands[0], " ")
-	if !strings.Contains(command, "git -C "+bareDir+" remote update --prune") {
-		t.Fatalf("expected remote update command, got %q", command)
+	if !strings.Contains(command, "git -C "+bareDir+" fetch --all --prune --progress") {
+		t.Fatalf("expected fetch --all --prune --progress command, got %q", command)
 	}
 }
 
@@ -184,7 +184,7 @@ func TestFetchPRMergeRefUsesPRRNamespaceDestination(t *testing.T) {
 	}
 
 	command := strings.Join(runner.commands[0], " ")
-	if !strings.Contains(command, "fetch origin pull/42/merge:refs/prr/pull/42/merge") {
+	if !strings.Contains(command, "fetch --progress origin pull/42/merge:refs/prr/pull/42/merge") {
 		t.Fatalf("expected fetch destination to target PRR namespace, got %q", command)
 	}
 }
@@ -349,7 +349,7 @@ t.Fatalf("expected one fetch command, got %d", len(runner.commands))
 }
 
 command := strings.Join(runner.commands[0], " ")
-if !strings.Contains(command, "fetch origin pull/42/head:refs/prr/pull/42/head") {
+if !strings.Contains(command, "fetch --progress origin pull/42/head:refs/prr/pull/42/head") {
 t.Fatalf("expected fetch destination to target PRR namespace, got %q", command)
 }
 }
