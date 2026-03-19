@@ -19,7 +19,7 @@ builds:
       - amd64
     ldflags:
       - -s -w
-      - -X main.version={{.Version}}
+      - -X main.version=v{{.Version}}
       - -X main.commit={{.Commit}}
       - -X main.buildDate={{.Date}}
 
@@ -34,7 +34,7 @@ builds:
       - arm64
     ldflags:
       - -s -w
-      - -X main.version={{.Version}}
+      - -X main.version=v{{.Version}}
       - -X main.commit={{.Commit}}
       - -X main.buildDate={{.Date}}
 
@@ -49,7 +49,7 @@ builds:
       - amd64
     ldflags:
       - -s -w
-      - -X main.version={{.Version}}
+      - -X main.version=v{{.Version}}
       - -X main.commit={{.Commit}}
       - -X main.buildDate={{.Date}}
 
@@ -64,7 +64,7 @@ builds:
       - arm64
     ldflags:
       - -s -w
-      - -X main.version={{.Version}}
+      - -X main.version=v{{.Version}}
       - -X main.commit={{.Commit}}
       - -X main.buildDate={{.Date}}
 
@@ -79,7 +79,7 @@ builds:
       - amd64
     ldflags:
       - -s -w
-      - -X main.version={{.Version}}
+      - -X main.version=v{{.Version}}
       - -X main.commit={{.Commit}}
       - -X main.buildDate={{.Date}}
 
@@ -94,7 +94,7 @@ builds:
       - arm64
     ldflags:
       - -s -w
-      - -X main.version={{.Version}}
+      - -X main.version=v{{.Version}}
       - -X main.commit={{.Commit}}
       - -X main.buildDate={{.Date}}
 
