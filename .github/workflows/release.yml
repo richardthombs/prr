@@ -46,7 +46,6 @@ jobs:
       matrix:
         include:
           - runner: macos-latest   # macOS 15 Sequoia, arm64
-          - runner: macos-13       # macOS 13 Ventura, x86_64
           - runner: ubuntu-latest  # Ubuntu 24.04, x86_64
     runs-on: ${{ matrix.runner }}
     steps:
@@ -72,7 +71,22 @@ jobs:
             richardthombs/prr/prr
 
       - name: Upload bottle tarball to release
-        run: gh release upload "${{ github.ref_name }}" ./*.bottle.tar.gz --clobber
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+
+          files=(./*.bottle.tar.gz)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "Expected at least one bottle tarball, but none were found in the working directory."
+            pwd
+            ls -la
+            exit 1
+          fi
+
+          printf 'Uploading bottle tarballs:\n'
+          printf '  %s\n' "${files[@]}"
+          gh release upload "${{ github.ref_name }}" "${files[@]}" --clobber
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
