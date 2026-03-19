@@ -72,7 +72,7 @@ var checkoutCmd = &cobra.Command{
 		}
 		prRef = provider.EnrichPRRef(context.Background(), prRef, prEnricherFactory(), warnf)
 
-		service := mirrorServiceFactory()
+		service := mirrorServiceFactory(cmd.ErrOrStderr())
 		commonOpts := git.EnsureOptions{
 			Verbose: verbose || whatIf,
 			WhatIf:  whatIf,

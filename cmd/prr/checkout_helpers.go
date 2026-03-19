@@ -1,14 +1,16 @@
 package main
 
 import (
+	"io"
+
 	apperrors "github.com/richardthombs/prr/internal/errors"
 	"github.com/richardthombs/prr/internal/git"
 	"github.com/richardthombs/prr/internal/provider"
 	"github.com/spf13/cobra"
 )
 
-var mirrorServiceFactory = func() *git.Service {
-	return git.NewService(git.NewExecRunner())
+var mirrorServiceFactory = func(stderr io.Writer) *git.Service {
+	return git.NewService(git.NewExecRunnerWithStderr(stderr))
 }
 
 var prEnricherFactory = func() provider.CLIRunner {

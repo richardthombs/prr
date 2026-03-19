@@ -44,7 +44,7 @@ var pwdCmd = &cobra.Command{
 			return err
 		}
 
-		service := mirrorServiceFactory()
+		service := mirrorServiceFactory(cmd.ErrOrStderr())
 
 		bareDir, err := service.ResolveMirrorDir(prRef.RepoURL)
 		if err != nil {

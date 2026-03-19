@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"io"
 	"strings"
 	"testing"
 
@@ -59,7 +60,7 @@ func TestCheckoutEmitsPipelineEquivalentPayload(t *testing.T) {
 		return "", nil
 	}}, t.TempDir())
 
-	mirrorServiceFactory = func() *git.Service {
+	mirrorServiceFactory = func(_ io.Writer) *git.Service {
 		return service
 	}
 
@@ -118,7 +119,7 @@ func TestCheckoutWhatIfSkipsExternalExecution(t *testing.T) {
 	}}
 
 	service := git.NewServiceWithCacheDir(runner, t.TempDir())
-	mirrorServiceFactory = func() *git.Service {
+	mirrorServiceFactory = func(_ io.Writer) *git.Service {
 		return service
 	}
 
