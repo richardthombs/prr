@@ -3,6 +3,12 @@
 All notable changes to prr are documented here.
 This file is updated automatically by GoReleaser from conventional commit messages on each release.
 
+## v0.2.1 - 2026-03-19
+
+### Bug Fixes
+- Inject the CLI version with the `v` prefix in GoReleaser ldflags and add version tests to lock the contract
+- Remove unsupported Intel macOS Homebrew bottle support and harden bottle asset upload in the release workflow
+
 ## v0.2.0 - 2026-03-19
 
 ### Features
