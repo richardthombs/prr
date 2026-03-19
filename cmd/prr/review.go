@@ -255,7 +255,11 @@ var reviewCmd = &cobra.Command{
 				return apperrors.WrapRuntime("failed to write output", err)
 			}
 		} else {
-			markdown := renderMarkdown(reviewOutput, prRef.PRID, prRef.RepoURL, diffOutput.Issues)
+			prURL := prRef.PRURL
+			if prURL == "" {
+				prURL = buildPRURL(prRef.RepoURL, prRef.PRID)
+			}
+			markdown := renderMarkdown(reviewOutput, prRef.PRID, prURL, diffOutput.Issues)
 			if _, err := fmt.Fprintln(cmd.OutOrStdout(), markdown); err != nil {
 				return apperrors.WrapRuntime("failed to write markdown output", err)
 			}

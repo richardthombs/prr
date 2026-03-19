@@ -61,9 +61,18 @@ func (r *Resolver) ResolveFromPullRequestURL(ctx context.Context, prURL string, 
 		remoteName = opts.Remote
 	}
 
-	return r.Resolve(ctx, parsedContext.PRID, ResolveOptions{
+	prRef, err := r.Resolve(ctx, parsedContext.PRID, ResolveOptions{
 		Provider: providerName,
 		RepoURL:  repoURL,
 		Remote:   remoteName,
 	})
+	if err != nil {
+		return types.PRRef{}, err
+	}
+
+	if prRef.PRURL == "" {
+		prRef.PRURL = parsedContext.PRURL
+	}
+
+	return prRef, nil
 }

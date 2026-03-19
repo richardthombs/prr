@@ -104,6 +104,65 @@ func TestEnrichPRRefWarnsForUnknownProvider(t *testing.T) {
 	}
 }
 
+func TestEnrichAzureDevOpsPopulatesBaseBranchSHAAndPRURL(t *testing.T) {
+	runner := &stubCLIRunner{
+		output: `{"targetRefName":"refs/heads/main","lastMergeTargetCommit":"abc123","webUrl":"https://dev.azure.com/org/project/_git/repo/pullrequest/85820"}`,
+	}
+	warnings := make([]string, 0)
+	warnf := func(format string, args ...any) { warnings = append(warnings, format) }
+
+	ref := types.PRRef{PRID: 85820, Provider: "azure-devops", RepoURL: "https://dev.azure.com/org/project/_git/repo"}
+	enriched := enrichAzureDevOps(context.Background(), ref, runner, warnf)
+
+	if enriched.BaseBranch != "main" {
+		t.Fatalf("expected BaseBranch 'main', got %q", enriched.BaseBranch)
+	}
+	if enriched.BaseSHA != "abc123" {
+		t.Fatalf("expected BaseSHA 'abc123', got %q", enriched.BaseSHA)
+	}
+	if enriched.PRURL != "https://dev.azure.com/org/project/_git/repo/pullrequest/85820" {
+		t.Fatalf("expected canonical PRURL with 'pullrequest', got %q", enriched.PRURL)
+	}
+	if len(warnings) != 0 {
+		t.Fatalf("expected no warnings, got %v", warnings)
+	}
+}
+
+func TestEnrichAzureDevOpsDoesNotOverwriteExistingPRURL(t *testing.T) {
+	runner := &stubCLIRunner{
+		output: `{"targetRefName":"refs/heads/main","lastMergeTargetCommit":"abc123","webUrl":""}`,
+	}
+	warnings := make([]string, 0)
+	warnf := func(format string, args ...any) { warnings = append(warnings, format) }
+
+	ref := types.PRRef{
+		PRID:     85820,
+		Provider: "azure-devops",
+		RepoURL:  "https://dev.azure.com/org/project/_git/repo",
+		PRURL:    "https://dev.azure.com/org/project/_git/repo/pullrequest/85820",
+	}
+	enriched := enrichAzureDevOps(context.Background(), ref, runner, warnf)
+
+	if enriched.PRURL != "https://dev.azure.com/org/project/_git/repo/pullrequest/85820" {
+		t.Fatalf("expected PRURL to remain unchanged when CLI returns empty webUrl, got %q", enriched.PRURL)
+	}
+}
+
+func TestEnrichPRRefDispatchesAzureDevOps(t *testing.T) {
+	runner := &stubCLIRunner{
+		output: `{"targetRefName":"refs/heads/develop","lastMergeTargetCommit":"def456","webUrl":"https://dev.azure.com/org/project/_git/repo/pullrequest/42"}`,
+	}
+	ref := types.PRRef{PRID: 42, Provider: "azure-devops", RepoURL: "https://dev.azure.com/org/project/_git/repo"}
+	enriched := EnrichPRRef(context.Background(), ref, runner, func(string, ...any) {})
+
+	if enriched.BaseBranch != "develop" {
+		t.Fatalf("expected dispatch to azure enricher, got BaseBranch=%q", enriched.BaseBranch)
+	}
+	if enriched.PRURL != "https://dev.azure.com/org/project/_git/repo/pullrequest/42" {
+		t.Fatalf("expected canonical PRURL, got %q", enriched.PRURL)
+	}
+}
+
 func TestGitHubRepoSlug(t *testing.T) {
 	cases := []struct{ url, want string }{
 		{"https://github.com/owner/repo", "owner/repo"},

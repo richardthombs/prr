@@ -10,13 +10,13 @@ import (
 	"github.com/richardthombs/prr/internal/types"
 )
 
-func renderMarkdown(review types.Review, prID int, repoURL string, issues []types.RelatedIssue) string {
+func renderMarkdown(review types.Review, prID int, prURL string, issues []types.RelatedIssue) string {
 	var builder strings.Builder
 
 	issueSummary, prSummary := splitIssueAndPRSummaries(review.Summary)
 
 	builder.WriteString("## Summary\n")
-	builder.WriteString(renderPRLine(prID, repoURL))
+	builder.WriteString(renderPRLine(prID, prURL))
 	builder.WriteString("\n")
 	builder.WriteString(renderIssuesLine(issues))
 	builder.WriteString("\n\n")
@@ -92,11 +92,10 @@ func severityHeading(severity string) string {
 	}
 }
 
-func renderPRLine(prID int, repoURL string) string {
+func renderPRLine(prID int, prURL string) string {
 	if prID <= 0 {
 		return "PR: N/A"
 	}
-	prURL := buildPRURL(repoURL, prID)
 	if prURL == "" {
 		return fmt.Sprintf("PR: #%d", prID)
 	}

@@ -93,7 +93,7 @@ type azurePRResponse struct {
 func enrichAzureDevOps(ctx context.Context, ref types.PRRef, runner CLIRunner, warnf func(format string, args ...any)) types.PRRef {
 	out, err := runner.Run(ctx, "az", "repos", "pr", "show",
 		"--id", strconv.Itoa(ref.PRID),
-		"--query", "{targetRefName:targetRefName,lastMergeTargetCommit:lastMergeTargetCommit.commitId}",
+		"--query", "{targetRefName:targetRefName,lastMergeTargetCommit:lastMergeTargetCommit.commitId,webUrl:_links.web.href}",
 		"--output", "json",
 	)
 	if err != nil {
@@ -102,8 +102,9 @@ func enrichAzureDevOps(ctx context.Context, ref types.PRRef, runner CLIRunner, w
 	}
 
 	var resp struct {
-		TargetRefName          string `json:"targetRefName"`
-		LastMergeTargetCommit  string `json:"lastMergeTargetCommit"`
+		TargetRefName         string `json:"targetRefName"`
+		LastMergeTargetCommit string `json:"lastMergeTargetCommit"`
+		WebURL                string `json:"webUrl"`
 	}
 	if jsonErr := json.Unmarshal([]byte(out), &resp); jsonErr != nil {
 		warnf("enrichment skipped: could not parse az output: %v", jsonErr)
@@ -113,6 +114,9 @@ func enrichAzureDevOps(ctx context.Context, ref types.PRRef, runner CLIRunner, w
 	// ADO returns refs/heads/main — strip the prefix for a clean branch name.
 	ref.BaseBranch = strings.TrimPrefix(resp.TargetRefName, "refs/heads/")
 	ref.BaseSHA = resp.LastMergeTargetCommit
+	if resp.WebURL != "" {
+		ref.PRURL = resp.WebURL
+	}
 	return ref
 }
 

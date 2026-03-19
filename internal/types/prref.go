@@ -7,4 +7,5 @@ type PRRef struct {
 	Provider   string `json:"provider"`
 	BaseBranch string `json:"baseBranch,omitempty"`
 	BaseSHA    string `json:"baseSha,omitempty"`
+	PRURL      string `json:"prUrl,omitempty"`
 }
