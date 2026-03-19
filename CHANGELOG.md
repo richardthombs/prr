@@ -3,6 +3,11 @@
 All notable changes to prr are documented here.
 This file is updated automatically by GoReleaser from conventional commit messages on each release.
 
+## v0.2.3 - 2026-03-19
+
+### Bug Fixes
+- Pass the GitHub repository explicitly to `gh release upload` in bottle jobs so asset uploads do not depend on a local `.git` checkout
+
 ## v0.2.2 - 2026-03-19
 
 ### Bug Fixes

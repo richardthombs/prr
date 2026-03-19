@@ -86,7 +86,7 @@ jobs:
 
           printf 'Uploading bottle tarballs:\n'
           printf '  %s\n' "${files[@]}"
-          gh release upload "${{ github.ref_name }}" "${files[@]}" --clobber
+          gh release upload "${{ github.ref_name }}" "${files[@]}" --clobber --repo "${{ github.repository }}"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
