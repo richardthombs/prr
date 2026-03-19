@@ -37,7 +37,7 @@ func TestCLIAdapterBuildsCommandWithStdinEnvelopeModelAndWorkDir(t *testing.T) {
 			capturedArgs = append([]string{}, args...)
 			capturedCwd = cwd
 			capturedStdin = stdinPayload
-			return commandResult{Stdout: `{"summary":"ok","risk":{"score":0.1,"reasons":["low"]},"findings":[],"checklist":["run tests"]}`}, nil
+			return commandResult{Stdout: `{"issueSummary":"issue ok","prSummary":"pr ok","risk":{"score":0.1,"reasons":["low"]},"findings":[],"checklist":["run tests"]}`}, nil
 		}},
 	}
 
@@ -106,7 +106,7 @@ func TestCLIAdapterWhatIfSkipsExecutionAndReturnsStructuredReview(t *testing.T) 
 	if called {
 		t.Fatalf("expected no external execution in what-if mode")
 	}
-	if review.Summary == "" || review.Risk.Reasons == nil || review.Checklist == nil {
+	if review.IssueSummary == "" || review.PRSummary == "" || review.Risk.Reasons == nil || review.Checklist == nil {
 		t.Fatalf("expected structured review response in what-if mode")
 	}
 	if len(logs) == 0 {
@@ -122,7 +122,7 @@ func TestCLIAdapterParsesMixedTextAndJSONOutput(t *testing.T) {
 	adapter := &CLIAgentAdapter{
 		config: DefaultAgentConfig(),
 		runner: fakeRunner{run: func(_ context.Context, _ string, _ []string, _ string, _ string) (commandResult, error) {
-			return commandResult{Stdout: "info line\n{\"summary\":\"ok\",\"risk\":{\"score\":0.1,\"reasons\":[\"low\"]},\"findings\":[],\"checklist\":[\"run tests\"]}\ntrailing"}, nil
+			return commandResult{Stdout: "info line\n{\"issueSummary\":\"issue ok\",\"prSummary\":\"pr ok\",\"risk\":{\"score\":0.1,\"reasons\":[\"low\"]},\"findings\":[],\"checklist\":[\"run tests\"]}\ntrailing"}, nil
 		}},
 	}
 
@@ -133,8 +133,11 @@ func TestCLIAdapterParsesMixedTextAndJSONOutput(t *testing.T) {
 	if err != nil {
 		t.Fatalf("expected parser to extract JSON object, got %v", err)
 	}
-	if review.Summary != "ok" {
-		t.Fatalf("expected parsed summary 'ok', got %q", review.Summary)
+	if review.IssueSummary != "issue ok" {
+		t.Fatalf("expected parsed issueSummary 'issue ok', got %q", review.IssueSummary)
+	}
+	if review.PRSummary != "pr ok" {
+		t.Fatalf("expected parsed prSummary 'pr ok', got %q", review.PRSummary)
 	}
 }
 
@@ -142,7 +145,7 @@ func TestCLIAdapterRejectsOutOfRangeRiskScore(t *testing.T) {
 	adapter := &CLIAgentAdapter{
 		config: DefaultAgentConfig(),
 		runner: fakeRunner{run: func(_ context.Context, _ string, _ []string, _ string, _ string) (commandResult, error) {
-			return commandResult{Stdout: `{"summary":"ok","risk":{"score":4,"reasons":["high churn"]},"findings":[{"id":"F001","file":"a.go","line":7,"severity":"important","category":"tests","message":"m","suggestion":"s"}],"checklist":["run tests"]}`}, nil
+			return commandResult{Stdout: `{"issueSummary":"issue ok","prSummary":"pr ok","risk":{"score":4,"reasons":["high churn"]},"findings":[{"id":"F001","file":"a.go","line":7,"severity":"important","category":"tests","message":"m","suggestion":"s"}],"checklist":["run tests"]}`}, nil
 		}},
 	}
 
@@ -193,7 +196,7 @@ func TestCLIAdapterVerboseLogsCopilotOutput(t *testing.T) {
 		config: DefaultAgentConfig(),
 		runner: fakeRunner{run: func(_ context.Context, _ string, _ []string, _ string, _ string) (commandResult, error) {
 			return commandResult{
-				Stdout: "{\"summary\":\"ok\",\"risk\":{\"score\":0.1,\"reasons\":[\"low\"]},\"findings\":[],\"checklist\":[\"run tests\"]}",
+				Stdout: "{\"issueSummary\":\"issue ok\",\"prSummary\":\"pr ok\",\"risk\":{\"score\":0.1,\"reasons\":[\"low\"]},\"findings\":[],\"checklist\":[\"run tests\"]}",
 				Stderr: "copilot diagnostic",
 			}, nil
 		}},
@@ -347,7 +350,7 @@ func TestCLIAdapterUsesCustomReviewInstructions(t *testing.T) {
 		config: DefaultAgentConfig(),
 		runner: fakeRunner{run: func(_ context.Context, _ string, _ []string, _ string, stdinPayload string) (commandResult, error) {
 			capturedStdin = stdinPayload
-			return commandResult{Stdout: `{"summary":"ok","risk":{"score":0.1,"reasons":["low"]},"findings":[],"checklist":["run tests"]}`}, nil
+			return commandResult{Stdout: `{"issueSummary":"issue ok","prSummary":"pr ok","risk":{"score":0.1,"reasons":["low"]},"findings":[],"checklist":["run tests"]}`}, nil
 		}},
 	}
 
@@ -377,7 +380,7 @@ func TestCLIAdapterUsesDefaultReviewInstructionsWhenEmpty(t *testing.T) {
 		config: DefaultAgentConfig(),
 		runner: fakeRunner{run: func(_ context.Context, _ string, _ []string, _ string, stdinPayload string) (commandResult, error) {
 			capturedStdin = stdinPayload
-			return commandResult{Stdout: `{"summary":"ok","risk":{"score":0.1,"reasons":["low"]},"findings":[],"checklist":["run tests"]}`}, nil
+			return commandResult{Stdout: `{"issueSummary":"issue ok","prSummary":"pr ok","risk":{"score":0.1,"reasons":["low"]},"findings":[],"checklist":["run tests"]}`}, nil
 		}},
 	}
 

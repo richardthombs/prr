@@ -207,7 +207,8 @@ func marshalBundlePayload(bundle types.BundleV1, reviewInstructions string) (str
 2) Treat that JSON object as the complete review input.
 3) Return ONLY valid JSON using this exact schema (no markdown fences or extra prose):
 {
-	"summary": string,
+	"issueSummary": string,
+	"prSummary": string,
 	"risk": {"score": number, "reasons": string[]},
 	"findings": [
 		{
@@ -222,14 +223,12 @@ func marshalBundlePayload(bundle types.BundleV1, reviewInstructions string) (str
 	],
 	"checklist": string[]
 }
-4) summary MUST be concise and deterministic with:
-   - Issue summary in at most 2 paragraphs total across all linked issues.
-   - PR summary in at most 2 paragraphs focused on what changed (not critique).
-   - If needed, separate issue and PR summary blocks using exactly one blank line.
-5) findings must support final markdown grouping under headings:
+4) issueSummary MUST be derived ONLY from the linked issues in the bundle. It MUST NOT contain information from the PR diff or changed files. Summarise what problem(s) the issues describe in at most 2 paragraphs. If there are no linked issues, set issueSummary to "No linked issues."
+5) prSummary MUST be derived ONLY from the PR diff and changed files. It MUST NOT contain information from the linked issues. Summarise what changes have been made in at most 2 paragraphs.
+6) findings must support final markdown grouping under headings:
    Blocker, Important, Suggestion, Nitpick (map Nitpick to severity "nit").
-6) risk.score MUST be a decimal number between 0 and 1 inclusive.
-7) Be deterministic and concise.`)
+7) risk.score MUST be a decimal number between 0 and 1 inclusive.
+8) Be deterministic and concise.`)
 
 	stdinEnvelope := strings.Join([]string{
 		ri,
@@ -305,13 +304,16 @@ func extractJSONObject(raw string) (string, error) {
 }
 
 func whatIfReview(bundle types.BundleV1) types.Review {
-	summary := "what-if: review agent was not executed"
+	issueSummary := "what-if: review agent was not executed"
+	prSummary := "what-if: review agent was not executed"
 	if bundle.PRID > 0 {
-		summary = fmt.Sprintf("what-if: review agent was not executed for PR #%d", bundle.PRID)
+		issueSummary = fmt.Sprintf("what-if: review agent was not executed for PR #%d", bundle.PRID)
+		prSummary = fmt.Sprintf("what-if: review agent was not executed for PR #%d", bundle.PRID)
 	}
 
 	return types.Review{
-		Summary: summary,
+		IssueSummary: issueSummary,
+		PRSummary:    prSummary,
 		Risk: types.Risk{
 			Score:   0,
 			Reasons: []string{"What-if mode skips external agent execution."},

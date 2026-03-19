@@ -13,8 +13,6 @@ import (
 func renderMarkdown(review types.Review, prID int, prURL string, issues []types.RelatedIssue) string {
 	var builder strings.Builder
 
-	issueSummary, prSummary := splitIssueAndPRSummaries(review.Summary)
-
 	builder.WriteString("## Summary\n")
 	builder.WriteString(renderPRLine(prID, prURL))
 	builder.WriteString("\n")
@@ -22,11 +20,11 @@ func renderMarkdown(review types.Review, prID int, prURL string, issues []types.
 	builder.WriteString("\n\n")
 
 	builder.WriteString("### Issue summary\n")
-	builder.WriteString(issueSummary)
+	builder.WriteString(review.IssueSummary)
 	builder.WriteString("\n\n")
 
 	builder.WriteString("### PR summary\n")
-	builder.WriteString(prSummary)
+	builder.WriteString(review.PRSummary)
 	builder.WriteString("\n\n")
 
 	builder.WriteString("## Review\n")
@@ -151,48 +149,4 @@ func buildPRURL(repoURL string, prID int) string {
 	}
 	parsed.Path = strings.TrimSuffix(parsed.Path, "/") + "/pull/" + strconv.Itoa(prID)
 	return parsed.String()
-}
-
-func splitIssueAndPRSummaries(summary string) (string, string) {
-	paragraphs := splitParagraphs(summary)
-	if len(paragraphs) == 0 {
-		return "No issue summary provided.", "No PR summary provided."
-	}
-
-	issueParas := paragraphs
-	if len(issueParas) > 2 {
-		issueParas = issueParas[:2]
-	}
-
-	prStart := len(issueParas)
-	prParas := []string{}
-	if prStart < len(paragraphs) {
-		prParas = paragraphs[prStart:]
-	}
-	if len(prParas) > 2 {
-		prParas = prParas[:2]
-	}
-	if len(prParas) == 0 {
-		prParas = issueParas
-	}
-
-	return strings.Join(issueParas, "\n\n"), strings.Join(prParas, "\n\n")
-}
-
-func splitParagraphs(text string) []string {
-	trimmed := strings.TrimSpace(text)
-	if trimmed == "" {
-		return nil
-	}
-
-	raw := strings.Split(trimmed, "\n\n")
-	paragraphs := make([]string, 0, len(raw))
-	for _, para := range raw {
-		cleaned := strings.TrimSpace(para)
-		if cleaned == "" {
-			continue
-		}
-		paragraphs = append(paragraphs, cleaned)
-	}
-	return paragraphs
 }

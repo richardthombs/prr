@@ -7,7 +7,8 @@ import (
 
 func TestNormalizeAndValidateReviewOutputRejectsRiskScoreOutsideZeroToOne(t *testing.T) {
 	_, err := NormalizeAndValidateReviewOutput(Review{
-		Summary: "ok",
+		IssueSummary: "ok",
+		PRSummary:    "ok",
 		Risk: Risk{Score: 4, Reasons: []string{"r"}},
 		Findings: []Finding{{
 			File:       "a.go",
@@ -26,7 +27,8 @@ func TestNormalizeAndValidateReviewOutputRejectsRiskScoreOutsideZeroToOne(t *tes
 
 func TestNormalizeAndValidateReviewOutputStillValidatesStructure(t *testing.T) {
 	_, err := NormalizeAndValidateReviewOutput(Review{
-		Summary: "ok",
+		IssueSummary: "ok",
+		PRSummary:    "ok",
 		Risk: Risk{Score: 4, Reasons: []string{"r"}},
 		Findings: []Finding{{
 			File:       "a.go",
@@ -45,7 +47,8 @@ func TestNormalizeAndValidateReviewOutputStillValidatesStructure(t *testing.T) {
 
 func TestValidateReviewInputKeepsStrictRiskScale(t *testing.T) {
 	_, err := ValidateReviewInput(Review{
-		Summary: "ok",
+		IssueSummary: "ok",
+		PRSummary:    "ok",
 		Risk: Risk{Score: 4, Reasons: []string{"r"}},
 		Findings: []Finding{{
 			ID:         "F001",
@@ -63,23 +66,40 @@ func TestValidateReviewInputKeepsStrictRiskScale(t *testing.T) {
 	}
 }
 
-func TestValidateReviewRejectsMissingSummary(t *testing.T) {
+func TestValidateReviewRejectsMissingIssueSummary(t *testing.T) {
 	_, err := NormalizeAndValidateReviewOutput(Review{
+		PRSummary: "ok",
 		Risk:      Risk{Score: 0.5, Reasons: []string{"r"}},
 		Findings:  []Finding{},
 		Checklist: []string{},
 	})
 	if err == nil {
-		t.Fatalf("expected error for missing summary")
+		t.Fatalf("expected error for missing issueSummary")
 	}
-	if !strings.Contains(err.Error(), "missing summary") {
-		t.Fatalf("expected missing summary diagnostic, got %v", err)
+	if !strings.Contains(err.Error(), "missing issueSummary") {
+		t.Fatalf("expected missing issueSummary diagnostic, got %v", err)
+	}
+}
+
+func TestValidateReviewRejectsMissingPRSummary(t *testing.T) {
+	_, err := NormalizeAndValidateReviewOutput(Review{
+		IssueSummary: "ok",
+		Risk:         Risk{Score: 0.5, Reasons: []string{"r"}},
+		Findings:     []Finding{},
+		Checklist:    []string{},
+	})
+	if err == nil {
+		t.Fatalf("expected error for missing prSummary")
+	}
+	if !strings.Contains(err.Error(), "missing prSummary") {
+		t.Fatalf("expected missing prSummary diagnostic, got %v", err)
 	}
 }
 
 func TestValidateReviewRejectsNilRiskReasons(t *testing.T) {
 	_, err := NormalizeAndValidateReviewOutput(Review{
-		Summary:   "ok",
+		IssueSummary: "ok",
+		PRSummary:    "ok",
 		Risk:      Risk{Score: 0.5, Reasons: nil},
 		Findings:  []Finding{},
 		Checklist: []string{},
@@ -94,7 +114,8 @@ func TestValidateReviewRejectsNilRiskReasons(t *testing.T) {
 
 func TestValidateReviewRejectsNilFindings(t *testing.T) {
 	_, err := NormalizeAndValidateReviewOutput(Review{
-		Summary:   "ok",
+		IssueSummary: "ok",
+		PRSummary:    "ok",
 		Risk:      Risk{Score: 0.5, Reasons: []string{"r"}},
 		Findings:  nil,
 		Checklist: []string{},
@@ -109,7 +130,8 @@ func TestValidateReviewRejectsNilFindings(t *testing.T) {
 
 func TestValidateReviewRejectsMissingFindingFile(t *testing.T) {
 	_, err := NormalizeAndValidateReviewOutput(Review{
-		Summary: "ok",
+		IssueSummary: "ok",
+		PRSummary:    "ok",
 		Risk:    Risk{Score: 0.1, Reasons: []string{"low"}},
 		Findings: []Finding{{
 			Severity:   "nit",
@@ -129,7 +151,8 @@ func TestValidateReviewRejectsMissingFindingFile(t *testing.T) {
 
 func TestValidateReviewRejectsInvalidFindingCategory(t *testing.T) {
 	_, err := NormalizeAndValidateReviewOutput(Review{
-		Summary: "ok",
+		IssueSummary: "ok",
+		PRSummary:    "ok",
 		Risk:    Risk{Score: 0.1, Reasons: []string{"low"}},
 		Findings: []Finding{{
 			File:       "a.go",
@@ -151,7 +174,8 @@ func TestValidateReviewRejectsInvalidFindingCategory(t *testing.T) {
 
 func TestValidateReviewRejectsMissingFindingMessage(t *testing.T) {
 	_, err := NormalizeAndValidateReviewOutput(Review{
-		Summary: "ok",
+		IssueSummary: "ok",
+		PRSummary:    "ok",
 		Risk:    Risk{Score: 0.1, Reasons: []string{"low"}},
 		Findings: []Finding{{
 			File:       "a.go",
@@ -173,7 +197,8 @@ func TestValidateReviewRejectsMissingFindingMessage(t *testing.T) {
 
 func TestValidateReviewRejectsMissingFindingSuggestion(t *testing.T) {
 	_, err := NormalizeAndValidateReviewOutput(Review{
-		Summary: "ok",
+		IssueSummary: "ok",
+		PRSummary:    "ok",
 		Risk:    Risk{Score: 0.1, Reasons: []string{"low"}},
 		Findings: []Finding{{
 			File:       "a.go",
@@ -195,7 +220,8 @@ func TestValidateReviewRejectsMissingFindingSuggestion(t *testing.T) {
 
 func TestNormalizeAndValidateReviewOutputAutoAssignsIDAndLine(t *testing.T) {
 	result, err := NormalizeAndValidateReviewOutput(Review{
-		Summary: "ok",
+		IssueSummary: "ok",
+		PRSummary:    "ok",
 		Risk:    Risk{Score: 0.1, Reasons: []string{"low"}},
 		Findings: []Finding{{
 			File:       "a.go",
@@ -220,7 +246,8 @@ func TestNormalizeAndValidateReviewOutputAutoAssignsIDAndLine(t *testing.T) {
 
 func TestValidateReviewInputRejectsMissingFindingID(t *testing.T) {
 	_, err := ValidateReviewInput(Review{
-		Summary: "ok",
+		IssueSummary: "ok",
+		PRSummary:    "ok",
 		Risk:    Risk{Score: 0.2, Reasons: []string{"low"}},
 		Findings: []Finding{{
 			File:       "a.go",
@@ -243,7 +270,8 @@ func TestValidateReviewInputRejectsMissingFindingID(t *testing.T) {
 
 func TestValidateReviewInputRejectsZeroLine(t *testing.T) {
 	_, err := ValidateReviewInput(Review{
-		Summary: "ok",
+		IssueSummary: "ok",
+		PRSummary:    "ok",
 		Risk:    Risk{Score: 0.2, Reasons: []string{"low"}},
 		Findings: []Finding{{
 			ID:         "F001",
