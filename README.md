@@ -85,3 +85,29 @@ prr checkout "https://github.com/<owner>/<repo>/pull/<id>" | prr review
 - CLI mode uses provider CLIs as before (`gh` for GitHub, `az` for Azure DevOps).
 - GitHub issue discovery uses GraphQL under both CLI and REST modes to resolve closing/linked issues consistently.
 - If both CLI and REST paths fail (in `cli-rest` mode), `prr review` returns a provider error including both failure paths for diagnosis.
+
+## Configuration
+
+PRR supports an optional `~/.prr-config.json` file in your home directory for persistent configuration.
+
+### Review instructions
+
+By default, PRR instructs the review engine to `"Perform a code review of the included changes"`. You can replace this with custom instructions from a Markdown file:
+
+```json
+{
+  "reviewInstructionsFile": "/path/to/your/review-instructions.md"
+}
+```
+
+The file should be a Markdown document describing how you want the review engine to evaluate pull requests. For example, you might specify preferred coding standards, areas to focus on, or severity thresholds. If the file is absent or empty, PRR falls back to the default instruction.
+
+**Example `~/.prr-config.json`:**
+
+```json
+{
+  "reviewInstructionsFile": "/home/user/.config/prr/review-instructions.md"
+}
+```
+
+> **Note:** Paths in `reviewInstructionsFile` must be absolute.

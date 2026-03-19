@@ -13,6 +13,7 @@ import (
 	"time"
 
 	apperrors "github.com/richardthombs/prr/internal/errors"
+	"github.com/richardthombs/prr/internal/config"
 	"github.com/richardthombs/prr/internal/types"
 )
 
@@ -21,12 +22,13 @@ type ReviewEngine interface {
 }
 
 type ReviewInput struct {
-	Bundle  types.BundleV1
-	WorkDir string
-	Model   string
-	Verbose bool
-	WhatIf  bool
-	Logger  func(format string, args ...any)
+	Bundle             types.BundleV1
+	WorkDir            string
+	Model              string
+	Verbose            bool
+	WhatIf             bool
+	Logger             func(format string, args ...any)
+	ReviewInstructions string
 }
 
 type AgentConfig struct {
@@ -91,7 +93,7 @@ func (a *CLIAgentAdapter) Review(ctx context.Context, input ReviewInput) (types.
 		return types.Review{}, err
 	}
 
-	stdinPayload, err := marshalBundlePayload(input.Bundle)
+	stdinPayload, err := marshalBundlePayload(input.Bundle, input.ReviewInstructions)
 	if err != nil {
 		return types.Review{}, err
 	}
@@ -187,13 +189,20 @@ func buildCommand(config AgentConfig, model string) (string, []string) {
 	return strings.TrimSpace(config.Command), args
 }
 
-func marshalBundlePayload(bundle types.BundleV1) (string, error) {
+const defaultReviewInstructions = config.DefaultReviewInstructions
+
+func marshalBundlePayload(bundle types.BundleV1, reviewInstructions string) (string, error) {
 	bundleJSON, err := json.Marshal(bundle)
 	if err != nil {
 		return "", apperrors.WrapRuntime("failed to encode review input payload", err)
 	}
 
-	instructions := strings.TrimSpace(`INSTRUCTIONS
+	ri := strings.TrimSpace(reviewInstructions)
+	if ri == "" {
+		ri = defaultReviewInstructions
+	}
+
+	pipelineInstructions := strings.TrimSpace(`INSTRUCTIONS
 1) Analyse ONLY the JSON object between DIFF_BUNDLE_JSON_START and DIFF_BUNDLE_JSON_END.
 2) Treat that JSON object as the complete review input.
 3) Return ONLY valid JSON using this exact schema (no markdown fences or extra prose):
@@ -223,7 +232,9 @@ func marshalBundlePayload(bundle types.BundleV1) (string, error) {
 7) Be deterministic and concise.`)
 
 	stdinEnvelope := strings.Join([]string{
-		instructions,
+		ri,
+		"",
+		pipelineInstructions,
 		"",
 		"DIFF_BUNDLE_JSON_START",
 		string(bundleJSON),
