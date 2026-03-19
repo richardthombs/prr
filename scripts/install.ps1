@@ -28,7 +28,8 @@ if (-not $Version) {
     exit 1
 }
 
-$Archive = "${Binary}_${Version}_windows_${Arch}.zip"
+$VersionNum = $Version -replace '^v', ''
+$Archive = "${Binary}_${VersionNum}_windows_${Arch}.zip"
 $Url = "https://github.com/$Repo/releases/download/$Version/$Archive"
 
 Write-Host "Installing prr $Version (windows/$Arch) to $InstallDir..."
