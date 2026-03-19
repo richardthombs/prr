@@ -29,10 +29,11 @@ type Finding struct {
 }
 
 type Review struct {
-	Summary   string    `json:"summary"`
-	Risk      Risk      `json:"risk"`
-	Findings  []Finding `json:"findings"`
-	Checklist []string  `json:"checklist"`
+	IssueSummary string    `json:"issueSummary"`
+	PRSummary    string    `json:"prSummary"`
+	Risk         Risk      `json:"risk"`
+	Findings     []Finding `json:"findings"`
+	Checklist    []string  `json:"checklist"`
 }
 
 func NormalizeAndValidateReviewOutput(input Review) (Review, error) {
@@ -50,9 +51,14 @@ func NormalizeAndValidateReview(input Review) (Review, error) {
 func validateReview(input Review, wrap wrapFunc, allowMissingID bool, validateRiskRange bool, label string) (Review, error) {
 	review := input
 
-	review.Summary = strings.TrimSpace(review.Summary)
-	if review.Summary == "" {
-		return Review{}, wrap(label+" is missing summary", nil)
+	review.IssueSummary = strings.TrimSpace(review.IssueSummary)
+	if review.IssueSummary == "" {
+		return Review{}, wrap(label+" is missing issueSummary", nil)
+	}
+
+	review.PRSummary = strings.TrimSpace(review.PRSummary)
+	if review.PRSummary == "" {
+		return Review{}, wrap(label+" is missing prSummary", nil)
 	}
 
 	if validateRiskRange {

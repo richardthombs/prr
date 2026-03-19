@@ -88,8 +88,11 @@ func TestReviewCommandEmitsStructuredJSONAndKeepsDiagnosticsOffStdout(t *testing
 		t.Fatalf("expected valid review JSON, got %v", err)
 	}
 
-	if payload["summary"] == "" {
-		t.Fatalf("expected summary field in review JSON")
+	if payload["issueSummary"] == "" {
+		t.Fatalf("expected issueSummary field in review JSON")
+	}
+	if payload["prSummary"] == "" {
+		t.Fatalf("expected prSummary field in review JSON")
 	}
 	if _, ok := payload["risk"].(map[string]any); !ok {
 		t.Fatalf("expected risk object in review JSON")
@@ -209,8 +212,11 @@ func TestReviewCommandAcceptsPRURLArgument(t *testing.T) {
 	if err := json.Unmarshal(bytes.TrimSpace(stdout.Bytes()), &payload); err != nil {
 		t.Fatalf("expected valid review JSON, got %v", err)
 	}
-	if payload["summary"] == "" {
-		t.Fatalf("expected summary in review JSON")
+	if payload["issueSummary"] == "" {
+		t.Fatalf("expected issueSummary in review JSON")
+	}
+	if payload["prSummary"] == "" {
+		t.Fatalf("expected prSummary in review JSON")
 	}
 }
 
@@ -264,8 +270,11 @@ func TestReviewCommandAcceptsPipedCheckoutJSONWithoutArgs(t *testing.T) {
 	if err := json.Unmarshal(bytes.TrimSpace(stdout.Bytes()), &payload); err != nil {
 		t.Fatalf("expected valid review JSON, got %v", err)
 	}
-	if payload["summary"] == "" {
-		t.Fatalf("expected summary in review JSON")
+	if payload["issueSummary"] == "" {
+		t.Fatalf("expected issueSummary in review JSON")
+	}
+	if payload["prSummary"] == "" {
+		t.Fatalf("expected prSummary in review JSON")
 	}
 }
 
@@ -325,8 +334,11 @@ func TestReviewCommandBypassesSetupWithAuthoritativeCheckoutJSON(t *testing.T) {
 	if err := json.Unmarshal(bytes.TrimSpace(stdout.Bytes()), &payload); err != nil {
 		t.Fatalf("expected valid review JSON, got %v", err)
 	}
-	if payload["summary"] == "" {
-		t.Fatalf("expected summary in review JSON")
+	if payload["issueSummary"] == "" {
+		t.Fatalf("expected issueSummary in review JSON")
+	}
+	if payload["prSummary"] == "" {
+		t.Fatalf("expected prSummary in review JSON")
 	}
 }
 
@@ -455,7 +467,8 @@ func TestReviewCommandEmitsDeterministicJSONShape(t *testing.T) {
 	reviewEngineFactory = func() engine.ReviewEngine {
 		return reviewEngineFunc(func(_ context.Context, _ engine.ReviewInput) (types.Review, error) {
 			return types.Review{
-				Summary: "Deterministic review",
+				IssueSummary: "Deterministic issue summary",
+				PRSummary:    "Deterministic PR summary",
 				Risk: types.Risk{
 					Score:   0.25,
 					Reasons: []string{"Stable fixture"},
@@ -484,7 +497,7 @@ func TestReviewCommandEmitsDeterministicJSONShape(t *testing.T) {
 		t.Fatalf("expected review command to succeed, got %v", err)
 	}
 
-	const expected = "{\"summary\":\"Deterministic review\",\"risk\":{\"score\":0.25,\"reasons\":[\"Stable fixture\"]},\"findings\":[{\"id\":\"F001\",\"file\":\"a.go\",\"line\":7,\"severity\":\"important\",\"category\":\"tests\",\"message\":\"Add coverage\",\"suggestion\":\"Add assertions\"}],\"checklist\":[\"Run CI\"]}\n"
+	const expected = "{\"issueSummary\":\"Deterministic issue summary\",\"prSummary\":\"Deterministic PR summary\",\"risk\":{\"score\":0.25,\"reasons\":[\"Stable fixture\"]},\"findings\":[{\"id\":\"F001\",\"file\":\"a.go\",\"line\":7,\"severity\":\"important\",\"category\":\"tests\",\"message\":\"Add coverage\",\"suggestion\":\"Add assertions\"}],\"checklist\":[\"Run CI\"]}\n"
 	if stdout.String() != expected {
 		t.Fatalf("expected deterministic JSON output.\nwant: %q\n got: %q", expected, stdout.String())
 	}
@@ -577,7 +590,8 @@ func (f reviewEngineFunc) Review(ctx context.Context, input engine.ReviewInput) 
 
 func deterministicReview() types.Review {
 	return types.Review{
-		Summary: "Deterministic review",
+		IssueSummary: "Deterministic issue summary",
+		PRSummary:    "Deterministic PR summary",
 		Risk: types.Risk{
 			Score:   0.25,
 			Reasons: []string{"Stable fixture"},
