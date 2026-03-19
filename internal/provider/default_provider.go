@@ -22,6 +22,7 @@ const (
 	githubTokenEnv       = "PRR_GITHUB_TOKEN"
 	azureTokenEnv        = "PRR_AZURE_DEVOPS_TOKEN"
 	githubAPIBaseURLEnv  = "PRR_GITHUB_API_BASE_URL"
+	githubGraphQLQuery   = `query($owner: String!, $repo: String!, $number: Int!) { repository(owner: $owner, name: $repo) { pullRequest(number: $number) { closingIssuesReferences(first: 100) { nodes { number url title body state labels(first: 50) { nodes { name } } } } } } }`
 )
 
 type issueProviderMode string
@@ -141,13 +142,24 @@ func discoverGitHubIssuesCLI(ctx context.Context, ref types.PRRef, runner CLIRun
 	if repoSlug == "" {
 		return nil, apperrors.WrapProvider("failed to derive GitHub repository slug for issue discovery", nil)
 	}
+	owner, repo, ok := splitGitHubRepoSlug(repoSlug)
+	if !ok {
+		return nil, apperrors.WrapProvider("failed to derive GitHub repository owner/name for issue discovery", nil)
+	}
 
-	out, err := runner.Run(ctx, "gh", "api", fmt.Sprintf("repos/%s/pulls/%d/issues", repoSlug, ref.PRID))
+	out, err := runner.Run(
+		ctx,
+		"gh", "api", "graphql",
+		"-f", "query="+githubGraphQLQuery,
+		"-F", "owner="+owner,
+		"-F", "repo="+repo,
+		"-F", fmt.Sprintf("number=%d", ref.PRID),
+	)
 	if err != nil {
 		return nil, apperrors.WrapProvider("failed to discover linked GitHub issues", err)
 	}
 
-	return parseGitHubIssueList(out)
+	return parseGitHubGraphQLIssueList(out)
 }
 
 func (p *defaultProvider) discoverGitHubIssuesREST(ctx context.Context, ref types.PRRef) ([]types.RelatedIssue, error) {
@@ -160,29 +172,117 @@ func (p *defaultProvider) discoverGitHubIssuesREST(ctx context.Context, ref type
 	if repoSlug == "" {
 		return nil, apperrors.WrapProvider("failed to derive GitHub repository slug for issue discovery", nil)
 	}
+	owner, repo, ok := splitGitHubRepoSlug(repoSlug)
+	if !ok {
+		return nil, apperrors.WrapProvider("failed to derive GitHub repository owner/name for issue discovery", nil)
+	}
 
 	baseURL := strings.TrimSuffix(strings.TrimSpace(p.githubAPIBaseURL), "/")
+	bodyBytes, err := json.Marshal(map[string]any{
+		"query": githubGraphQLQuery,
+		"variables": map[string]any{
+			"owner":  owner,
+			"repo":   repo,
+			"number": ref.PRID,
+		},
+	})
+	if err != nil {
+		return nil, apperrors.WrapProvider("failed to encode GitHub REST request for issue discovery", err)
+	}
 	req, err := http.NewRequestWithContext(
 		ctx,
-		http.MethodGet,
-		fmt.Sprintf("%s/repos/%s/pulls/%d/issues", baseURL, repoSlug, ref.PRID),
-		nil,
+		http.MethodPost,
+		fmt.Sprintf("%s/graphql", baseURL),
+		strings.NewReader(string(bodyBytes)),
 	)
 	if err != nil {
 		return nil, apperrors.WrapProvider("failed to build GitHub REST request for issue discovery", err)
 	}
 	req.Header.Set("Accept", "application/vnd.github+json")
 	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Content-Type", "application/json")
 
 	body, err := p.doRequest(req)
 	if err != nil {
 		return nil, apperrors.WrapProvider("failed to discover linked GitHub issues via REST", err)
 	}
 
-	return parseGitHubIssueList(body)
+	return parseGitHubGraphQLIssueList(body)
 }
 
-func parseGitHubIssueList(raw string) ([]types.RelatedIssue, error) {
+func parseGitHubGraphQLIssueList(raw string) ([]types.RelatedIssue, error) {
+	trimmedRaw := strings.TrimSpace(raw)
+	if strings.HasPrefix(trimmedRaw, "[") {
+		return parseGitHubIssueListLegacy(trimmedRaw)
+	}
+
+	var payload struct {
+		Data struct {
+			Repository struct {
+				PullRequest *struct {
+					ClosingIssuesReferences struct {
+						Nodes []struct {
+							Number int    `json:"number"`
+							URL    string `json:"url"`
+							Title  string `json:"title"`
+							Body   string `json:"body"`
+							State  string `json:"state"`
+							Labels struct {
+								Nodes []struct {
+									Name string `json:"name"`
+								} `json:"nodes"`
+							} `json:"labels"`
+						} `json:"nodes"`
+					} `json:"closingIssuesReferences"`
+				} `json:"pullRequest"`
+			} `json:"repository"`
+		} `json:"data"`
+		Errors []struct {
+			Message string `json:"message"`
+		} `json:"errors"`
+	}
+	if err := json.Unmarshal([]byte(raw), &payload); err != nil {
+		return nil, apperrors.WrapProvider("failed to parse GitHub issue discovery response", err)
+	}
+	if len(payload.Errors) > 0 {
+		return nil, apperrors.WrapProvider(
+			"failed to parse GitHub issue discovery response",
+			fmt.Errorf("graphql error: %s", strings.TrimSpace(payload.Errors[0].Message)),
+		)
+	}
+	if payload.Data.Repository.PullRequest == nil {
+		return []types.RelatedIssue{}, nil
+	}
+
+	nodes := payload.Data.Repository.PullRequest.ClosingIssuesReferences.Nodes
+	issues := make([]types.RelatedIssue, 0, len(nodes))
+	for _, item := range nodes {
+		if item.Number <= 0 {
+			continue
+		}
+		labels := make([]string, 0, len(item.Labels.Nodes))
+		for _, label := range item.Labels.Nodes {
+			name := strings.TrimSpace(label.Name)
+			if name != "" {
+				labels = append(labels, name)
+			}
+		}
+		issues = append(issues, types.RelatedIssue{
+			ID:       strconv.Itoa(item.Number),
+			Type:     "issue",
+			Provider: "github",
+			URL:      strings.TrimSpace(item.URL),
+			Title:    strings.TrimSpace(item.Title),
+			Body:     strings.TrimSpace(item.Body),
+			State:    strings.ToLower(strings.TrimSpace(item.State)),
+			Labels:   labels,
+		})
+	}
+
+	return issues, nil
+}
+
+func parseGitHubIssueListLegacy(raw string) ([]types.RelatedIssue, error) {
 	var payload []struct {
 		Number  int    `json:"number"`
 		HTMLURL string `json:"html_url"`
@@ -216,12 +316,25 @@ func parseGitHubIssueList(raw string) ([]types.RelatedIssue, error) {
 			URL:      strings.TrimSpace(item.HTMLURL),
 			Title:    strings.TrimSpace(item.Title),
 			Body:     strings.TrimSpace(item.Body),
-			State:    strings.TrimSpace(item.State),
+			State:    strings.ToLower(strings.TrimSpace(item.State)),
 			Labels:   labels,
 		})
 	}
 
 	return issues, nil
+}
+
+func splitGitHubRepoSlug(slug string) (owner string, repo string, ok bool) {
+	parts := strings.Split(strings.TrimSpace(slug), "/")
+	if len(parts) != 2 {
+		return "", "", false
+	}
+	owner = strings.TrimSpace(parts[0])
+	repo = strings.TrimSpace(parts[1])
+	if owner == "" || repo == "" {
+		return "", "", false
+	}
+	return owner, repo, true
 }
 
 func (p *defaultProvider) discoverAzureDevOpsIssues(ctx context.Context, ref types.PRRef, runner CLIRunner) ([]types.RelatedIssue, error) {

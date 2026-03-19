@@ -83,4 +83,5 @@ prr checkout "https://github.com/<owner>/<repo>/pull/<id>" | prr review
 - GitHub REST fallback requires `PRR_GITHUB_TOKEN`. Optionally set `PRR_GITHUB_API_BASE_URL` for non-default API base URLs (default: `https://api.github.com`).
 - Azure DevOps REST fallback requires `PRR_AZURE_DEVOPS_TOKEN`.
 - CLI mode uses provider CLIs as before (`gh` for GitHub, `az` for Azure DevOps).
-- If both CLI and REST paths fail, `prr review` returns a provider error including both failure paths for diagnosis.
+- GitHub issue discovery uses GraphQL under both CLI and REST modes to resolve closing/linked issues consistently.
+- If both CLI and REST paths fail (in `cli-rest` mode), `prr review` returns a provider error including both failure paths for diagnosis.

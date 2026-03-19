@@ -129,10 +129,10 @@ func TestDiscoverGitHubIssuesReturnsNormalizedIssueData(t *testing.T) {
 			if name != "gh" {
 				t.Fatalf("expected gh command, got %q", name)
 			}
-			if len(args) < 2 || args[0] != "api" {
+			if len(args) < 2 || args[0] != "api" || args[1] != "graphql" {
 				t.Fatalf("unexpected gh args: %v", args)
 			}
-			return `[{"number":42,"html_url":"https://github.com/acme/repo/issues/42","title":"Fix race","body":"Details","state":"open","labels":[{"name":"bug"},{"name":"urgent"}]}]`, nil
+			return `{"data":{"repository":{"pullRequest":{"closingIssuesReferences":{"nodes":[{"number":42,"url":"https://github.com/acme/repo/issues/42","title":"Fix race","body":"Details","state":"OPEN","labels":{"nodes":[{"name":"bug"},{"name":"urgent"}]}}]}}}}}`, nil
 		},
 	}
 	provider := NewDefaultProvider()
@@ -207,13 +207,24 @@ func TestDiscoverGitHubIssuesFallsBackToRESTWhenCLIFails(t *testing.T) {
 	t.Setenv(githubTokenEnv, "test-token")
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/repos/acme/repo/pulls/17/issues" {
+		if r.URL.Path != "/graphql" {
 			t.Fatalf("unexpected path: %s", r.URL.Path)
+		}
+		if r.Method != http.MethodPost {
+			t.Fatalf("unexpected method: %s", r.Method)
 		}
 		if got := r.Header.Get("Authorization"); got != "Bearer test-token" {
 			t.Fatalf("expected bearer auth header, got %q", got)
 		}
-		_, _ = w.Write([]byte(`[{"number":77,"html_url":"https://github.com/acme/repo/issues/77","title":"REST issue","body":"REST body","state":"open","labels":[{"name":"rest"}]}]`))
+		bodyBytes, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Fatalf("failed reading request body: %v", err)
+		}
+		defer r.Body.Close()
+		if !strings.Contains(string(bodyBytes), `"number":17`) {
+			t.Fatalf("expected GraphQL variables in request body, got: %s", string(bodyBytes))
+		}
+		_, _ = w.Write([]byte(`{"data":{"repository":{"pullRequest":{"closingIssuesReferences":{"nodes":[{"number":77,"url":"https://github.com/acme/repo/issues/77","title":"REST issue","body":"REST body","state":"OPEN","labels":{"nodes":[{"name":"rest"}]}}]}}}}}`))
 	}))
 	defer server.Close()
 	t.Setenv(githubAPIBaseURLEnv, server.URL)
