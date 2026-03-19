@@ -54,7 +54,7 @@ func (s *Service) EnsureMirrorWithOptions(ctx context.Context, repoURL string, o
 
 	if opts.WhatIf {
 		if _, statErr := os.Stat(bareDir); statErr == nil {
-			_, runErr := s.runCommand(ctx, opts, "git", "-C", bareDir, "remote", "update", "--prune")
+			_, runErr := s.runCommand(ctx, opts, "git", "-C", bareDir, "fetch", "--all", "--prune", "--progress")
 			if runErr != nil {
 				return "", runErr
 			}
@@ -64,7 +64,7 @@ func (s *Service) EnsureMirrorWithOptions(ctx context.Context, repoURL string, o
 			return "", apperrors.WrapRuntime("failed to inspect bare mirror path", statErr)
 		}
 
-		_, runErr := s.runCommand(ctx, opts, "git", "clone", "--mirror", strings.TrimSpace(repoURL), bareDir)
+		_, runErr := s.runCommand(ctx, opts, "git", "clone", "--mirror", "--progress", strings.TrimSpace(repoURL), bareDir)
 		if runErr != nil {
 			return "", runErr
 		}
@@ -78,7 +78,7 @@ func (s *Service) EnsureMirrorWithOptions(ctx context.Context, repoURL string, o
 
 	err = s.withRepoLock(bareDir, opts, func() error {
 		if _, statErr := os.Stat(bareDir); statErr == nil {
-			_, runErr := s.runCommand(ctx, opts, "git", "-C", bareDir, "remote", "update", "--prune")
+			_, runErr := s.runCommand(ctx, opts, "git", "-C", bareDir, "fetch", "--all", "--prune", "--progress")
 			if runErr != nil {
 				return apperrors.WrapRuntime("failed to update bare mirror", runErr)
 			}
@@ -88,7 +88,7 @@ func (s *Service) EnsureMirrorWithOptions(ctx context.Context, repoURL string, o
 			return apperrors.WrapRuntime("failed to inspect bare mirror path", statErr)
 		}
 
-		_, runErr := s.runCommand(ctx, opts, "git", "clone", "--mirror", strings.TrimSpace(repoURL), bareDir)
+		_, runErr := s.runCommand(ctx, opts, "git", "clone", "--mirror", "--progress", strings.TrimSpace(repoURL), bareDir)
 		if runErr != nil {
 			return apperrors.WrapRuntime("failed to create bare mirror", runErr)
 		}
@@ -137,7 +137,7 @@ func (s *Service) FetchPRMergeRefWithOptions(ctx context.Context, bareDir, remot
 	sourceRef := "pull/" + strconv.Itoa(prID) + "/merge"
 	destination := sourceRef + ":" + mergeRef
 
-	_, err := s.runCommand(ctx, opts, "git", "-C", trimmedBareDir, "fetch", trimmedRemote, destination)
+	_, err := s.runCommand(ctx, opts, "git", "-C", trimmedBareDir, "fetch", "--progress", trimmedRemote, destination)
 	if err != nil {
 		return "", apperrors.WrapProvider("failed to fetch PR merge ref", err)
 	}
@@ -295,7 +295,7 @@ func (s *Service) FetchPRHeadRef(ctx context.Context, bareDir, remote string, pr
 	sourceRef := "pull/" + strconv.Itoa(prID) + "/head"
 	destination := sourceRef + ":" + headRef
 
-	_, err := s.runCommand(ctx, opts, "git", "-C", trimmedBareDir, "fetch", trimmedRemote, destination)
+	_, err := s.runCommand(ctx, opts, "git", "-C", trimmedBareDir, "fetch", "--progress", trimmedRemote, destination)
 	if err != nil {
 		return "", apperrors.WrapProvider("failed to fetch PR head ref", err)
 	}
