@@ -200,6 +200,10 @@ func TestDiscoverAzureIssuesReturnsNormalizedWorkItemData(t *testing.T) {
 	if item.Metadata["workItemType"] != "Bug" || item.Metadata["teamProject"] != "project" {
 		t.Fatalf("unexpected metadata: %+v", item.Metadata)
 	}
+	wantURL := "https://dev.azure.com/org/project/_workitems/edit/1001"
+	if item.URL != wantURL {
+		t.Fatalf("expected URL %q, got %q", wantURL, item.URL)
+	}
 }
 
 func TestDiscoverGitHubIssuesFallsBackToRESTWhenCLIFails(t *testing.T) {
@@ -287,6 +291,10 @@ func TestDiscoverAzureIssuesFallsBackToRESTWhenCLIFails(t *testing.T) {
 	if len(issues) != 1 || issues[0].ID != "1001" {
 		t.Fatalf("unexpected issues from rest fallback: %+v", issues)
 	}
+	wantURL := "https://dev.azure.com/org/project/_workitems/edit/1001"
+	if issues[0].URL != wantURL {
+		t.Fatalf("expected URL %q, got %q", wantURL, issues[0].URL)
+	}
 }
 
 func TestDiscoverIssuesRejectsInvalidModeConfiguration(t *testing.T) {
@@ -308,5 +316,53 @@ func TestDiscoverIssuesRejectsInvalidModeConfiguration(t *testing.T) {
 	}
 	if appErr.Class != apperrors.ClassConfig {
 		t.Fatalf("expected config error class, got %s", appErr.Class)
+	}
+}
+
+func TestAzureWorkItemWebURL(t *testing.T) {
+	tests := []struct {
+		name        string
+		apiURL      string
+		id          int
+		teamProject string
+		want        string
+	}{
+		{
+			name:        "project-scoped dev.azure.com URL",
+			apiURL:      "https://dev.azure.com/org/project/_apis/wit/workItems/1001",
+			id:          1001,
+			teamProject: "project",
+			want:        "https://dev.azure.com/org/project/_workitems/edit/1001",
+		},
+		{
+			name:        "org-scoped dev.azure.com URL with teamProject",
+			apiURL:      "https://dev.azure.com/ensekltd/_apis/wit/workItems/378982",
+			id:          378982,
+			teamProject: "blackbird",
+			want:        "https://dev.azure.com/ensekltd/blackbird/_workitems/edit/378982",
+		},
+		{
+			name:        "org-scoped dev.azure.com URL without teamProject",
+			apiURL:      "https://dev.azure.com/org/_apis/wit/workItems/42",
+			id:          42,
+			teamProject: "",
+			want:        "https://dev.azure.com/org/_workitems/edit/42",
+		},
+		{
+			name:        "visualstudio.com URL",
+			apiURL:      "https://org.visualstudio.com/project/_apis/wit/workItems/99",
+			id:          99,
+			teamProject: "project",
+			want:        "https://org.visualstudio.com/project/_workitems/edit/99",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := azureWorkItemWebURL(tc.apiURL, tc.id, tc.teamProject)
+			if got != tc.want {
+				t.Fatalf("azureWorkItemWebURL(%q, %d, %q) = %q, want %q", tc.apiURL, tc.id, tc.teamProject, got, tc.want)
+			}
+		})
 	}
 }

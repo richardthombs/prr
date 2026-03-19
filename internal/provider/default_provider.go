@@ -514,7 +514,7 @@ func buildAzureIssueList(items []azureWorkItemResponse) []types.RelatedIssue {
 			ID:       strconv.Itoa(item.ID),
 			Type:     "work-item",
 			Provider: "azure-devops",
-			URL:      strings.TrimSpace(item.URL),
+			URL:      azureWorkItemWebURL(item.URL, item.ID, item.Fields.TeamProject),
 			Title:    strings.TrimSpace(item.Fields.Title),
 			Body:     strings.TrimSpace(item.Fields.Description),
 			State:    strings.TrimSpace(item.Fields.State),
@@ -560,6 +560,37 @@ func sanitizeHTTPBody(body []byte) string {
 func setAzureAuthHeader(req *http.Request, token string) {
 	encoded := base64.StdEncoding.EncodeToString([]byte(":" + strings.TrimSpace(token)))
 	req.Header.Set("Authorization", "Basic "+encoded)
+}
+
+// azureWorkItemWebURL converts the REST API URL returned by Azure DevOps
+// (e.g. https://dev.azure.com/org/project/_apis/wit/workItems/1)
+// into the human-facing work item URL
+// (e.g. https://dev.azure.com/org/project/_workitems/edit/1).
+// When the API URL is org-scoped (no project segment), teamProject is appended.
+func azureWorkItemWebURL(apiURL string, id int, teamProject string) string {
+	apiURL = strings.TrimSpace(apiURL)
+	parsed, err := url.Parse(apiURL)
+	if err != nil || parsed.Host == "" {
+		return apiURL
+	}
+
+	apisIdx := strings.Index(parsed.Path, "/_apis/")
+	if apisIdx < 0 {
+		return apiURL
+	}
+
+	basePath := parsed.Path[:apisIdx]
+
+	// For dev.azure.com the path is /{org}/{project}. If only /{org} is present
+	// and we know the project, append it so the link resolves correctly.
+	if parsed.Host == "dev.azure.com" {
+		segments := strings.Split(strings.Trim(basePath, "/"), "/")
+		if len(segments) == 1 && strings.TrimSpace(teamProject) != "" {
+			basePath = basePath + "/" + url.PathEscape(strings.TrimSpace(teamProject))
+		}
+	}
+
+	return fmt.Sprintf("%s://%s%s/_workitems/edit/%d", parsed.Scheme, parsed.Host, basePath, id)
 }
 
 func azureRepoContext(repoURL string) (orgProjectBase string, repoName string, err error) {
