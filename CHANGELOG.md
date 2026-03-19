@@ -3,6 +3,12 @@
 All notable changes to prr are documented here.
 This file is updated automatically by GoReleaser from conventional commit messages on each release.
 
+## v0.3.0 - 2026-03-19
+
+### Bug Fixes
+- Use canonical Azure DevOps pull request URLs in review output
+- Use human-facing Azure DevOps work item URLs instead of REST API URLs in linked issue context
+
 ## v0.2.3 - 2026-03-19
 
 ### Bug Fixes
