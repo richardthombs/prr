@@ -20,6 +20,9 @@ func TestParsePullRequestURLAzureDevOps(t *testing.T) {
 	if parsed.Remote != "origin" {
 		t.Fatalf("unexpected remote %q", parsed.Remote)
 	}
+	if parsed.PRURL != "https://dev.azure.com/ensekltd/blackbird/_git/blackbird/pullrequest/83438" {
+		t.Fatalf("unexpected PRURL %q", parsed.PRURL)
+	}
 }
 
 func TestParsePullRequestURLVisualStudio(t *testing.T) {
@@ -39,6 +42,9 @@ func TestParsePullRequestURLVisualStudio(t *testing.T) {
 	}
 	if parsed.Remote != "origin" {
 		t.Fatalf("unexpected remote %q", parsed.Remote)
+	}
+	if parsed.PRURL != "https://ensekltd.visualstudio.com/blackbird/_git/blackbird/pullrequest/84945" {
+		t.Fatalf("unexpected PRURL %q", parsed.PRURL)
 	}
 }
 
@@ -66,6 +72,9 @@ func TestParsePullRequestURLGitHub(t *testing.T) {
 	}
 	if parsed.Remote != "origin" {
 		t.Fatalf("unexpected remote %q", parsed.Remote)
+	}
+	if parsed.PRURL != "https://github.com/steveyegge/beads/pull/2331" {
+		t.Fatalf("unexpected PRURL %q", parsed.PRURL)
 	}
 }
 

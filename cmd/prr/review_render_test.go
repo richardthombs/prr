@@ -619,3 +619,61 @@ func resetReviewFlagState(t *testing.T) {
 		reviewCmd.Flags().Lookup(flag.name).Changed = false
 	}
 }
+
+func TestRenderPRLineUsesPreBuiltURL(t *testing.T) {
+	cases := []struct {
+		name     string
+		prID     int
+		prURL    string
+		expected string
+	}{
+		{
+			name:     "azure devops pullrequest URL",
+			prID:     85820,
+			prURL:    "https://dev.azure.com/org/project/_git/repo/pullrequest/85820",
+			expected: "PR: [#85820](https://dev.azure.com/org/project/_git/repo/pullrequest/85820)",
+		},
+		{
+			name:     "github pull URL",
+			prID:     42,
+			prURL:    "https://github.com/acme/repo/pull/42",
+			expected: "PR: [#42](https://github.com/acme/repo/pull/42)",
+		},
+		{
+			name:     "empty URL falls back to plain ID",
+			prID:     7,
+			prURL:    "",
+			expected: "PR: #7",
+		},
+		{
+			name:     "zero ID returns N/A",
+			prID:     0,
+			prURL:    "https://example.com/pr/0",
+			expected: "PR: N/A",
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			got := renderPRLine(c.prID, c.prURL)
+			if got != c.expected {
+				t.Fatalf("renderPRLine(%d, %q) = %q, want %q", c.prID, c.prURL, got, c.expected)
+			}
+		})
+	}
+}
+
+func TestBuildPRURLConstructsGitHubURL(t *testing.T) {
+	got := buildPRURL("https://github.com/acme/repo", 42)
+	want := "https://github.com/acme/repo/pull/42"
+	if got != want {
+		t.Fatalf("buildPRURL = %q, want %q", got, want)
+	}
+}
+
+func TestBuildPRURLReturnsEmptyForBlankRepoURL(t *testing.T) {
+	got := buildPRURL("", 42)
+	if got != "" {
+		t.Fatalf("expected empty string for blank repoURL, got %q", got)
+	}
+}

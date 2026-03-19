@@ -12,6 +12,7 @@ type pullRequestContext struct {
 	RepoURL  string
 	Provider string
 	Remote   string
+	PRURL    string
 }
 
 func parsePullRequestURL(rawURL string) (pullRequestContext, error) {
@@ -53,12 +54,14 @@ func parseAzureDevOpsPullRequestURL(parsedURL *url.URL) (pullRequestContext, err
 	}
 
 	repoURL := fmt.Sprintf("%s://%s/%s", parsedURL.Scheme, parsedURL.Host, strings.Join(pathSegments[:4], "/"))
+	prURL := fmt.Sprintf("%s/pullrequest/%d", repoURL, prID)
 
 	return pullRequestContext{
 		PRID:     prID,
 		RepoURL:  repoURL,
 		Provider: "azure-devops",
 		Remote:   "origin",
+		PRURL:    prURL,
 	}, nil
 }
 
@@ -80,12 +83,14 @@ func parseVisualStudioPullRequestURL(parsedURL *url.URL) (pullRequestContext, er
 	}
 
 	repoURL := fmt.Sprintf("%s://%s/%s", parsedURL.Scheme, parsedURL.Host, strings.Join(pathSegments[:3], "/"))
+	prURL := fmt.Sprintf("%s/pullrequest/%d", repoURL, prID)
 
 	return pullRequestContext{
 		PRID:     prID,
 		RepoURL:  repoURL,
 		Provider: "azure-devops",
 		Remote:   "origin",
+		PRURL:    prURL,
 	}, nil
 }
 
@@ -105,11 +110,13 @@ func parseGitHubPullRequestURL(parsedURL *url.URL) (pullRequestContext, error) {
 	}
 
 	repoURL := fmt.Sprintf("%s://%s/%s/%s", parsedURL.Scheme, parsedURL.Host, pathSegments[0], pathSegments[1])
+	prURL := fmt.Sprintf("%s/pull/%d", repoURL, prID)
 
 	return pullRequestContext{
 		PRID:     prID,
 		RepoURL:  repoURL,
 		Provider: "github",
 		Remote:   "origin",
+		PRURL:    prURL,
 	}, nil
 }
