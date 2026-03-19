@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"io"
 	"strings"
 	"testing"
 
@@ -36,7 +37,7 @@ func TestDiffCommandEmitsJSONFromStdinWorkDir(t *testing.T) {
 		}
 	}}, t.TempDir())
 
-	mirrorServiceFactory = func() *git.Service { return service }
+	mirrorServiceFactory = func(_ io.Writer) *git.Service { return service }
 
 	stdin := bytes.NewBufferString(`{"prId":12,"repoUrl":"https://github.com/acme/repo","remote":"origin","provider":"github","bareDir":"/tmp/bare","mergeRef":"refs/prr/pull/12/merge","workDir":"/tmp/work/12"}`)
 	stdout := &bytes.Buffer{}
@@ -78,7 +79,7 @@ func TestDiffCommandWhatIfLogsAndSkipsExecution(t *testing.T) {
 		return "", nil
 	}}
 	service := git.NewServiceWithCacheDir(runner, t.TempDir())
-	mirrorServiceFactory = func() *git.Service { return service }
+	mirrorServiceFactory = func(_ io.Writer) *git.Service { return service }
 
 	stdin := bytes.NewBufferString(`{"workDir":"/tmp/work/99"}`)
 	stdout := &bytes.Buffer{}

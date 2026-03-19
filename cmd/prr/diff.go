@@ -50,7 +50,7 @@ var diffCmd = &cobra.Command{
 			return apperrors.WrapConfig("worktree directory is required; provide --work-dir or stdin JSON with workDir", nil)
 		}
 
-		service := mirrorServiceFactory()
+		service := mirrorServiceFactory(cmd.ErrOrStderr())
 		diffOutput, err := service.DiffContributionWithOptions(context.Background(), resolvedWorkDir, strings.TrimSpace(input.BaseRef), git.EnsureOptions{
 			Verbose: verbose || whatIf,
 			WhatIf:  whatIf,

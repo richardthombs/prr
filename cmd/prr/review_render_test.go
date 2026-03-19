@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"strings"
 	"testing"
 
@@ -44,7 +45,7 @@ func TestReviewCommandEmitsStructuredJSONAndKeepsDiagnosticsOffStdout(t *testing
 		}
 	}}, t.TempDir())
 
-	mirrorServiceFactory = func() *git.Service { return service }
+	mirrorServiceFactory = func(_ io.Writer) *git.Service { return service }
 	issueRunnerFactory = func() provider.CLIRunner {
 		return stubRunner{runFunc: func(_ context.Context, name string, args ...string) (string, error) {
 			if name != "gh" {
@@ -79,8 +80,8 @@ func TestReviewCommandEmitsStructuredJSONAndKeepsDiagnosticsOffStdout(t *testing
 		t.Fatalf("expected review command to succeed, got %v", err)
 	}
 
-	if strings.TrimSpace(stderr.String()) != "" {
-		t.Fatalf("expected no diagnostics on stderr without verbose/what-if, got %q", stderr.String())
+	if !strings.Contains(stderr.String(), "[prr] starting PR review...") {
+		t.Fatalf("expected review commencement message on stderr, got %q", stderr.String())
 	}
 
 	var payload map[string]any
@@ -133,7 +134,7 @@ func TestReviewCommandWhatIfVerbosePrintsCommandsToStderr(t *testing.T) {
 		return "", nil
 	}}
 	service := git.NewServiceWithCacheDir(runner, t.TempDir())
-	mirrorServiceFactory = func() *git.Service { return service }
+	mirrorServiceFactory = func(_ io.Writer) *git.Service { return service }
 	issueRunnerFactory = func() provider.CLIRunner {
 		return stubRunner{runFunc: func(_ context.Context, _ string, _ ...string) (string, error) { return "[]", nil }}
 	}
@@ -188,7 +189,7 @@ func TestReviewCommandAcceptsPRURLArgument(t *testing.T) {
 			return "", nil
 		}
 	}}, t.TempDir())
-	mirrorServiceFactory = func() *git.Service { return service }
+	mirrorServiceFactory = func(_ io.Writer) *git.Service { return service }
 	issueRunnerFactory = func() provider.CLIRunner {
 		return stubRunner{runFunc: func(_ context.Context, _ string, _ ...string) (string, error) { return "[]", nil }}
 	}
@@ -245,7 +246,7 @@ func TestReviewCommandAcceptsPipedCheckoutJSONWithoutArgs(t *testing.T) {
 			return "", nil
 		}
 	}}, t.TempDir())
-	mirrorServiceFactory = func() *git.Service { return service }
+	mirrorServiceFactory = func(_ io.Writer) *git.Service { return service }
 	issueRunnerFactory = func() provider.CLIRunner {
 		return stubRunner{runFunc: func(_ context.Context, _ string, _ ...string) (string, error) { return "[]", nil }}
 	}
@@ -309,7 +310,7 @@ func TestReviewCommandBypassesSetupWithAuthoritativeCheckoutJSON(t *testing.T) {
 	}}
 
 	service := git.NewServiceWithCacheDir(runner, t.TempDir())
-	mirrorServiceFactory = func() *git.Service { return service }
+	mirrorServiceFactory = func(_ io.Writer) *git.Service { return service }
 	issueRunnerFactory = func() provider.CLIRunner {
 		return stubRunner{runFunc: func(_ context.Context, _ string, _ ...string) (string, error) { return "[]", nil }}
 	}
@@ -367,7 +368,7 @@ func TestReviewCommandPassesModelFlagToEngine(t *testing.T) {
 			return "", nil
 		}
 	}}, t.TempDir())
-	mirrorServiceFactory = func() *git.Service { return service }
+	mirrorServiceFactory = func(_ io.Writer) *git.Service { return service }
 	issueRunnerFactory = func() provider.CLIRunner {
 		return stubRunner{runFunc: func(_ context.Context, _ string, _ ...string) (string, error) { return "[]", nil }}
 	}
@@ -419,7 +420,7 @@ func TestReviewCommandClassifiesEngineFailures(t *testing.T) {
 			return "", nil
 		}
 	}}, t.TempDir())
-	mirrorServiceFactory = func() *git.Service { return service }
+	mirrorServiceFactory = func(_ io.Writer) *git.Service { return service }
 	issueRunnerFactory = func() provider.CLIRunner {
 		return stubRunner{runFunc: func(_ context.Context, _ string, _ ...string) (string, error) { return "[]", nil }}
 	}
@@ -460,7 +461,7 @@ func TestReviewCommandEmitsDeterministicJSONShape(t *testing.T) {
 		t.Fatalf("expected no external command execution in what-if mode")
 		return "", nil
 	}}
-	mirrorServiceFactory = func() *git.Service { return git.NewServiceWithCacheDir(runner, t.TempDir()) }
+	mirrorServiceFactory = func(_ io.Writer) *git.Service { return git.NewServiceWithCacheDir(runner, t.TempDir()) }
 	issueRunnerFactory = func() provider.CLIRunner {
 		return stubRunner{runFunc: func(_ context.Context, _ string, _ ...string) (string, error) { return "[]", nil }}
 	}
@@ -528,7 +529,7 @@ func TestReviewCommandEmitsDeterministicMarkdown(t *testing.T) {
 			return "", nil
 		}
 	}}, t.TempDir())
-	mirrorServiceFactory = func() *git.Service { return service }
+	mirrorServiceFactory = func(_ io.Writer) *git.Service { return service }
 	issueRunnerFactory = func() provider.CLIRunner {
 		return stubRunner{runFunc: func(_ context.Context, _ string, _ ...string) (string, error) {
 			return `{"data":{"repository":{"pullRequest":{"closingIssuesReferences":{"nodes":[{"number":13,"url":"https://github.com/acme/repo/issues/13","title":"Issue title","body":"Issue body","state":"OPEN","labels":{"nodes":[{"name":"bug"}]}}]}}}}}`, nil

@@ -118,7 +118,7 @@ var reviewCmd = &cobra.Command{
 			prRef = provider.EnrichPRRef(context.Background(), prRef, prEnricherFactory(), warnf)
 		}
 
-		service := mirrorServiceFactory()
+		service := mirrorServiceFactory(cmd.ErrOrStderr())
 		commonOpts := git.EnsureOptions{
 			Verbose: verbose || whatIf,
 			WhatIf:  whatIf,
@@ -221,6 +221,7 @@ var reviewCmd = &cobra.Command{
 			return err
 		}
 
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "[prr] starting PR review...\n")
 		reviewOutput, err := reviewEngineFactory().Review(context.Background(), engine.ReviewInput{
 			Bundle:             bundlePayload,
 			WorkDir:            workDir,
