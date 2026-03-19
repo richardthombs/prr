@@ -14,4 +14,5 @@ type ResolveOptions struct {
 
 type PRProvider interface {
 	Resolve(ctx context.Context, prID int, opts map[string]string) (types.PRRef, error)
+	DiscoverIssues(ctx context.Context, ref types.PRRef, runner CLIRunner) ([]types.RelatedIssue, error)
 }

@@ -30,6 +30,7 @@ func BuildV1(input types.DiffOutput, limits Limits) (types.BundleV1, error) {
 		Patch:        input.Patch,
 		ChangedFiles: len(input.Files),
 		PatchBytes:   len([]byte(input.Patch)),
+		Issues:       input.Issues,
 	}
 
 	if err := validateLimits(bundle, limits); err != nil {

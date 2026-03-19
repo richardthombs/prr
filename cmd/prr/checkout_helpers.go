@@ -15,6 +15,10 @@ var prEnricherFactory = func() provider.CLIRunner {
 	return git.NewExecRunner()
 }
 
+var issueRunnerFactory = func() provider.CLIRunner {
+	return git.NewExecRunner()
+}
+
 type resolveOptions struct {
 	Provider string
 	RepoURL  string

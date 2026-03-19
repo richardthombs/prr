@@ -42,6 +42,9 @@ These Go commands are the canonical contributor workflow on macOS, Linux, and Wi
 - `prr review <PR_URL> --model <model_name>`
   Select the Copilot model for this review run; PRR passes this through to Copilot as `--model`.
 
+- `prr review` issue context enrichment  
+  During review, PRR discovers linked issues/work items from the PR provider (GitHub or Azure DevOps) and embeds normalized issue context into the review bundle sent to the engine.
+
 - `prr --help`  
   Show CLI help and available options.
 
@@ -70,3 +73,9 @@ prr review "https://github.com/<owner>/<repo>/pull/<id>" --json
 # Run review from checkout JSON pipeline
 prr checkout "https://github.com/<owner>/<repo>/pull/<id>" | prr review
 ```
+
+## Provider auth requirements for issue enrichment
+
+- GitHub reviews require authenticated `gh` CLI access for issue discovery.
+- Azure DevOps reviews require authenticated `az` CLI access for PR/work-item discovery.
+- If issue discovery fails, `prr review` now returns a clear provider error instead of silently continuing.

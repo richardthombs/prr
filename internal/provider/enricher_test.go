@@ -10,11 +10,15 @@ import (
 )
 
 type stubCLIRunner struct {
-	output string
-	err    error
+	output  string
+	err     error
+	runFunc func(ctx context.Context, name string, args ...string) (string, error)
 }
 
-func (r *stubCLIRunner) Run(_ context.Context, _ string, _ ...string) (string, error) {
+func (r *stubCLIRunner) Run(ctx context.Context, name string, args ...string) (string, error) {
+	if r.runFunc != nil {
+		return r.runFunc(ctx, name, args...)
+	}
 	return r.output, r.err
 }
 
@@ -107,4 +111,83 @@ func TestGitHubRepoSlug(t *testing.T) {
 
 func testGitHubRef() types.PRRef {
 	return types.PRRef{PRID: 3, Provider: "github", RepoURL: "https://github.com/richardthombs/prr"}
+}
+
+func TestDiscoverGitHubIssuesReturnsNormalizedIssueData(t *testing.T) {
+	runner := &stubCLIRunner{
+		runFunc: func(_ context.Context, name string, args ...string) (string, error) {
+			if name != "gh" {
+				t.Fatalf("expected gh command, got %q", name)
+			}
+			if len(args) < 2 || args[0] != "api" {
+				t.Fatalf("unexpected gh args: %v", args)
+			}
+			return `[{"number":42,"html_url":"https://github.com/acme/repo/issues/42","title":"Fix race","body":"Details","state":"open","labels":[{"name":"bug"},{"name":"urgent"}]}]`, nil
+		},
+	}
+	provider := NewDefaultProvider()
+
+	issues, err := provider.DiscoverIssues(context.Background(), types.PRRef{
+		PRID:     17,
+		Provider: "github",
+		RepoURL:  "https://github.com/acme/repo",
+	}, runner)
+	if err != nil {
+		t.Fatalf("expected success, got %v", err)
+	}
+	if len(issues) != 1 {
+		t.Fatalf("expected one issue, got %d", len(issues))
+	}
+	if issues[0].ID != "42" || issues[0].Type != "issue" || issues[0].Provider != "github" {
+		t.Fatalf("unexpected normalized issue: %+v", issues[0])
+	}
+	if issues[0].Title != "Fix race" || issues[0].State != "open" {
+		t.Fatalf("unexpected issue details: %+v", issues[0])
+	}
+	if len(issues[0].Labels) != 2 {
+		t.Fatalf("expected two labels, got %+v", issues[0].Labels)
+	}
+}
+
+func TestDiscoverAzureIssuesReturnsNormalizedWorkItemData(t *testing.T) {
+	runner := &stubCLIRunner{
+		runFunc: func(_ context.Context, name string, args ...string) (string, error) {
+			if name != "az" {
+				t.Fatalf("expected az command, got %q", name)
+			}
+			joined := strings.Join(args, " ")
+			switch {
+			case strings.Contains(joined, "repos pr work-item list"):
+				return `[{"id":1001}]`, nil
+			case strings.Contains(joined, "boards work-item show"):
+				return `{"id":1001,"url":"https://dev.azure.com/org/project/_apis/wit/workItems/1001","fields":{"System.Title":"Fix release pipeline","System.State":"Active","System.WorkItemType":"Bug","System.Tags":"ops; urgent","System.Description":"Pipeline is flaky","System.TeamProject":"project"}}`, nil
+			default:
+				t.Fatalf("unexpected az args: %v", args)
+				return "", nil
+			}
+		},
+	}
+	provider := NewDefaultProvider()
+
+	issues, err := provider.DiscoverIssues(context.Background(), types.PRRef{
+		PRID:     55,
+		Provider: "azure-devops",
+		RepoURL:  "https://dev.azure.com/org/project/_git/repo",
+	}, runner)
+	if err != nil {
+		t.Fatalf("expected success, got %v", err)
+	}
+	if len(issues) != 1 {
+		t.Fatalf("expected one work item, got %d", len(issues))
+	}
+	item := issues[0]
+	if item.ID != "1001" || item.Type != "work-item" || item.Provider != "azure-devops" {
+		t.Fatalf("unexpected normalized item: %+v", item)
+	}
+	if item.Title != "Fix release pipeline" || item.State != "Active" {
+		t.Fatalf("unexpected item content: %+v", item)
+	}
+	if item.Metadata["workItemType"] != "Bug" || item.Metadata["teamProject"] != "project" {
+		t.Fatalf("unexpected metadata: %+v", item.Metadata)
+	}
 }

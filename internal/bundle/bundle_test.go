@@ -18,6 +18,16 @@ func TestBuildV1ProducesBundlePayload(t *testing.T) {
 		Files:    []string{"a.txt", "b.txt"},
 		Stat:     "2 files changed",
 		Patch:    "diff --git a/a.txt b/a.txt",
+		Issues: []types.RelatedIssue{
+			{
+				ID:       "42",
+				Type:     "issue",
+				Provider: "github",
+				URL:      "https://github.com/acme/repo/issues/42",
+				Title:    "Fix race",
+				State:    "open",
+			},
+		},
 	}
 
 	payload, err := BuildV1(input, Limits{})
@@ -33,6 +43,9 @@ func TestBuildV1ProducesBundlePayload(t *testing.T) {
 	}
 	if payload.PatchBytes <= 0 {
 		t.Fatalf("expected patchBytes to be greater than zero, got %d", payload.PatchBytes)
+	}
+	if len(payload.Issues) != 1 || payload.Issues[0].ID != "42" {
+		t.Fatalf("expected bundle to include hydrated issues, got %+v", payload.Issues)
 	}
 
 	if err := ValidateV1Schema(payload); err != nil {

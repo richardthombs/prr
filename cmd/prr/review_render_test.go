@@ -10,6 +10,7 @@ import (
 
 	"github.com/richardthombs/prr/internal/engine"
 	"github.com/richardthombs/prr/internal/git"
+	"github.com/richardthombs/prr/internal/provider"
 	"github.com/richardthombs/prr/internal/types"
 )
 
@@ -18,9 +19,11 @@ func TestReviewCommandEmitsStructuredJSONAndKeepsDiagnosticsOffStdout(t *testing
 
 	originalMirrorFactory := mirrorServiceFactory
 	originalEngineFactory := reviewEngineFactory
+	originalIssueRunnerFactory := issueRunnerFactory
 	t.Cleanup(func() {
 		mirrorServiceFactory = originalMirrorFactory
 		reviewEngineFactory = originalEngineFactory
+		issueRunnerFactory = originalIssueRunnerFactory
 	})
 
 	service := git.NewServiceWithCacheDir(stubRunner{runFunc: func(_ context.Context, name string, args ...string) (string, error) {
@@ -42,8 +45,25 @@ func TestReviewCommandEmitsStructuredJSONAndKeepsDiagnosticsOffStdout(t *testing
 	}}, t.TempDir())
 
 	mirrorServiceFactory = func() *git.Service { return service }
+	issueRunnerFactory = func() provider.CLIRunner {
+		return stubRunner{runFunc: func(_ context.Context, name string, args ...string) (string, error) {
+			if name != "gh" {
+				t.Fatalf("unexpected issue command %q", name)
+			}
+			if len(args) < 2 || args[0] != "api" {
+				t.Fatalf("unexpected issue args %v", args)
+			}
+			return `[{"number":13,"html_url":"https://github.com/acme/repo/issues/13","title":"Issue title","body":"Issue body","state":"open","labels":[{"name":"bug"}]}]`, nil
+		}}
+	}
 	reviewEngineFactory = func() engine.ReviewEngine {
-		return reviewEngineFunc(func(_ context.Context, _ engine.ReviewInput) (types.Review, error) {
+		return reviewEngineFunc(func(_ context.Context, input engine.ReviewInput) (types.Review, error) {
+			if len(input.Bundle.Issues) != 1 {
+				t.Fatalf("expected issue hydration in bundle, got %+v", input.Bundle.Issues)
+			}
+			if input.Bundle.Issues[0].ID != "13" {
+				t.Fatalf("expected hydrated issue id 13, got %+v", input.Bundle.Issues[0])
+			}
 			return deterministicReview(), nil
 		})
 	}
@@ -98,9 +118,11 @@ func TestReviewCommandWhatIfVerbosePrintsCommandsToStderr(t *testing.T) {
 
 	originalMirrorFactory := mirrorServiceFactory
 	originalEngineFactory := reviewEngineFactory
+	originalIssueRunnerFactory := issueRunnerFactory
 	t.Cleanup(func() {
 		mirrorServiceFactory = originalMirrorFactory
 		reviewEngineFactory = originalEngineFactory
+		issueRunnerFactory = originalIssueRunnerFactory
 	})
 
 	runner := stubRunner{runFunc: func(_ context.Context, _ string, _ ...string) (string, error) {
@@ -109,6 +131,9 @@ func TestReviewCommandWhatIfVerbosePrintsCommandsToStderr(t *testing.T) {
 	}}
 	service := git.NewServiceWithCacheDir(runner, t.TempDir())
 	mirrorServiceFactory = func() *git.Service { return service }
+	issueRunnerFactory = func() provider.CLIRunner {
+		return stubRunner{runFunc: func(_ context.Context, _ string, _ ...string) (string, error) { return "[]", nil }}
+	}
 	reviewEngineFactory = func() engine.ReviewEngine {
 		return reviewEngineFunc(func(_ context.Context, _ engine.ReviewInput) (types.Review, error) {
 			return deterministicReview(), nil
@@ -140,9 +165,11 @@ func TestReviewCommandAcceptsPRURLArgument(t *testing.T) {
 
 	originalMirrorFactory := mirrorServiceFactory
 	originalEngineFactory := reviewEngineFactory
+	originalIssueRunnerFactory := issueRunnerFactory
 	t.Cleanup(func() {
 		mirrorServiceFactory = originalMirrorFactory
 		reviewEngineFactory = originalEngineFactory
+		issueRunnerFactory = originalIssueRunnerFactory
 	})
 
 	service := git.NewServiceWithCacheDir(stubRunner{runFunc: func(_ context.Context, _ string, args ...string) (string, error) {
@@ -159,6 +186,9 @@ func TestReviewCommandAcceptsPRURLArgument(t *testing.T) {
 		}
 	}}, t.TempDir())
 	mirrorServiceFactory = func() *git.Service { return service }
+	issueRunnerFactory = func() provider.CLIRunner {
+		return stubRunner{runFunc: func(_ context.Context, _ string, _ ...string) (string, error) { return "[]", nil }}
+	}
 	reviewEngineFactory = func() engine.ReviewEngine {
 		return reviewEngineFunc(func(_ context.Context, _ engine.ReviewInput) (types.Review, error) {
 			return deterministicReview(), nil
@@ -189,9 +219,11 @@ func TestReviewCommandAcceptsPipedCheckoutJSONWithoutArgs(t *testing.T) {
 
 	originalMirrorFactory := mirrorServiceFactory
 	originalEngineFactory := reviewEngineFactory
+	originalIssueRunnerFactory := issueRunnerFactory
 	t.Cleanup(func() {
 		mirrorServiceFactory = originalMirrorFactory
 		reviewEngineFactory = originalEngineFactory
+		issueRunnerFactory = originalIssueRunnerFactory
 	})
 
 	service := git.NewServiceWithCacheDir(stubRunner{runFunc: func(_ context.Context, _ string, args ...string) (string, error) {
@@ -208,6 +240,9 @@ func TestReviewCommandAcceptsPipedCheckoutJSONWithoutArgs(t *testing.T) {
 		}
 	}}, t.TempDir())
 	mirrorServiceFactory = func() *git.Service { return service }
+	issueRunnerFactory = func() provider.CLIRunner {
+		return stubRunner{runFunc: func(_ context.Context, _ string, _ ...string) (string, error) { return "[]", nil }}
+	}
 	reviewEngineFactory = func() engine.ReviewEngine {
 		return reviewEngineFunc(func(_ context.Context, _ engine.ReviewInput) (types.Review, error) {
 			return deterministicReview(), nil
@@ -239,9 +274,11 @@ func TestReviewCommandBypassesSetupWithAuthoritativeCheckoutJSON(t *testing.T) {
 
 	originalMirrorFactory := mirrorServiceFactory
 	originalEngineFactory := reviewEngineFactory
+	originalIssueRunnerFactory := issueRunnerFactory
 	t.Cleanup(func() {
 		mirrorServiceFactory = originalMirrorFactory
 		reviewEngineFactory = originalEngineFactory
+		issueRunnerFactory = originalIssueRunnerFactory
 	})
 
 	runner := stubRunner{runFunc: func(_ context.Context, _ string, args ...string) (string, error) {
@@ -264,6 +301,9 @@ func TestReviewCommandBypassesSetupWithAuthoritativeCheckoutJSON(t *testing.T) {
 
 	service := git.NewServiceWithCacheDir(runner, t.TempDir())
 	mirrorServiceFactory = func() *git.Service { return service }
+	issueRunnerFactory = func() provider.CLIRunner {
+		return stubRunner{runFunc: func(_ context.Context, _ string, _ ...string) (string, error) { return "[]", nil }}
+	}
 	reviewEngineFactory = func() engine.ReviewEngine {
 		return reviewEngineFunc(func(_ context.Context, _ engine.ReviewInput) (types.Review, error) {
 			return deterministicReview(), nil
@@ -295,9 +335,11 @@ func TestReviewCommandPassesModelFlagToEngine(t *testing.T) {
 
 	originalMirrorFactory := mirrorServiceFactory
 	originalEngineFactory := reviewEngineFactory
+	originalIssueRunnerFactory := issueRunnerFactory
 	t.Cleanup(func() {
 		mirrorServiceFactory = originalMirrorFactory
 		reviewEngineFactory = originalEngineFactory
+		issueRunnerFactory = originalIssueRunnerFactory
 	})
 
 	service := git.NewServiceWithCacheDir(stubRunner{runFunc: func(_ context.Context, _ string, args ...string) (string, error) {
@@ -314,6 +356,9 @@ func TestReviewCommandPassesModelFlagToEngine(t *testing.T) {
 		}
 	}}, t.TempDir())
 	mirrorServiceFactory = func() *git.Service { return service }
+	issueRunnerFactory = func() provider.CLIRunner {
+		return stubRunner{runFunc: func(_ context.Context, _ string, _ ...string) (string, error) { return "[]", nil }}
+	}
 
 	capturedModel := ""
 	reviewEngineFactory = func() engine.ReviewEngine {
@@ -342,9 +387,11 @@ func TestReviewCommandClassifiesEngineFailures(t *testing.T) {
 
 	originalMirrorFactory := mirrorServiceFactory
 	originalEngineFactory := reviewEngineFactory
+	originalIssueRunnerFactory := issueRunnerFactory
 	t.Cleanup(func() {
 		mirrorServiceFactory = originalMirrorFactory
 		reviewEngineFactory = originalEngineFactory
+		issueRunnerFactory = originalIssueRunnerFactory
 	})
 
 	service := git.NewServiceWithCacheDir(stubRunner{runFunc: func(_ context.Context, _ string, args ...string) (string, error) {
@@ -361,6 +408,9 @@ func TestReviewCommandClassifiesEngineFailures(t *testing.T) {
 		}
 	}}, t.TempDir())
 	mirrorServiceFactory = func() *git.Service { return service }
+	issueRunnerFactory = func() provider.CLIRunner {
+		return stubRunner{runFunc: func(_ context.Context, _ string, _ ...string) (string, error) { return "[]", nil }}
+	}
 
 	reviewEngineFactory = func() engine.ReviewEngine {
 		return reviewEngineFunc(func(_ context.Context, _ engine.ReviewInput) (types.Review, error) {
@@ -387,9 +437,11 @@ func TestReviewCommandEmitsDeterministicJSONShape(t *testing.T) {
 
 	originalMirrorFactory := mirrorServiceFactory
 	originalEngineFactory := reviewEngineFactory
+	originalIssueRunnerFactory := issueRunnerFactory
 	t.Cleanup(func() {
 		mirrorServiceFactory = originalMirrorFactory
 		reviewEngineFactory = originalEngineFactory
+		issueRunnerFactory = originalIssueRunnerFactory
 	})
 
 	runner := stubRunner{runFunc: func(_ context.Context, _ string, _ ...string) (string, error) {
@@ -397,6 +449,9 @@ func TestReviewCommandEmitsDeterministicJSONShape(t *testing.T) {
 		return "", nil
 	}}
 	mirrorServiceFactory = func() *git.Service { return git.NewServiceWithCacheDir(runner, t.TempDir()) }
+	issueRunnerFactory = func() provider.CLIRunner {
+		return stubRunner{runFunc: func(_ context.Context, _ string, _ ...string) (string, error) { return "[]", nil }}
+	}
 	reviewEngineFactory = func() engine.ReviewEngine {
 		return reviewEngineFunc(func(_ context.Context, _ engine.ReviewInput) (types.Review, error) {
 			return types.Review{
@@ -440,9 +495,11 @@ func TestReviewCommandEmitsDeterministicMarkdown(t *testing.T) {
 
 	originalMirrorFactory := mirrorServiceFactory
 	originalEngineFactory := reviewEngineFactory
+	originalIssueRunnerFactory := issueRunnerFactory
 	t.Cleanup(func() {
 		mirrorServiceFactory = originalMirrorFactory
 		reviewEngineFactory = originalEngineFactory
+		issueRunnerFactory = originalIssueRunnerFactory
 	})
 
 	service := git.NewServiceWithCacheDir(stubRunner{runFunc: func(_ context.Context, _ string, args ...string) (string, error) {
@@ -459,6 +516,9 @@ func TestReviewCommandEmitsDeterministicMarkdown(t *testing.T) {
 		}
 	}}, t.TempDir())
 	mirrorServiceFactory = func() *git.Service { return service }
+	issueRunnerFactory = func() provider.CLIRunner {
+		return stubRunner{runFunc: func(_ context.Context, _ string, _ ...string) (string, error) { return "[]", nil }}
+	}
 	reviewEngineFactory = func() engine.ReviewEngine {
 		return reviewEngineFunc(func(_ context.Context, _ engine.ReviewInput) (types.Review, error) {
 			return deterministicReview(), nil
@@ -490,18 +550,6 @@ func TestReviewCommandEmitsDeterministicMarkdown(t *testing.T) {
 		}
 	}
 }
-
-
-
-
-
-
-
-
-
-
-
-
 
 type reviewEngineFunc func(ctx context.Context, input engine.ReviewInput) (types.Review, error)
 
@@ -553,5 +601,3 @@ func resetReviewFlagState(t *testing.T) {
 		reviewCmd.Flags().Lookup(flag.name).Changed = false
 	}
 }
-
-

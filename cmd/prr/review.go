@@ -112,6 +112,7 @@ var reviewCmd = &cobra.Command{
 				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "[prr] warning: "+format+"\n", args...)
 			}
 		}
+		providerClient := provider.NewDefaultProvider()
 		if !useCheckoutContext {
 			prRef = provider.EnrichPRRef(context.Background(), prRef, prEnricherFactory(), warnf)
 		}
@@ -193,6 +194,11 @@ var reviewCmd = &cobra.Command{
 		diffOutput.MergeRef = mergeRef
 		diffOutput.BaseRef = baseRef
 		diffOutput.WorkDir = workDir
+		issues, err := providerClient.DiscoverIssues(context.Background(), prRef, issueRunnerFactory())
+		if err != nil {
+			return err
+		}
+		diffOutput.Issues = issues
 
 		if whatIf {
 			if strings.TrimSpace(diffOutput.Stat) == "" {

@@ -10,11 +10,19 @@ import (
 )
 
 type stubProvider struct {
-	resolveFunc func(ctx context.Context, prID int, opts map[string]string) (types.PRRef, error)
+	resolveFunc  func(ctx context.Context, prID int, opts map[string]string) (types.PRRef, error)
+	discoverFunc func(ctx context.Context, ref types.PRRef, runner CLIRunner) ([]types.RelatedIssue, error)
 }
 
 func (s stubProvider) Resolve(ctx context.Context, prID int, opts map[string]string) (types.PRRef, error) {
 	return s.resolveFunc(ctx, prID, opts)
+}
+
+func (s stubProvider) DiscoverIssues(ctx context.Context, ref types.PRRef, runner CLIRunner) ([]types.RelatedIssue, error) {
+	if s.discoverFunc == nil {
+		return nil, nil
+	}
+	return s.discoverFunc(ctx, ref, runner)
 }
 
 func TestResolverDelegatesToProvider(t *testing.T) {
