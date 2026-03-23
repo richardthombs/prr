@@ -71,6 +71,8 @@ make install
 
 ## 4. Windows
 
+> **WSL users:** If you prefer to run PRR inside Windows Subsystem for Linux, see [wsl-setup.md](wsl-setup.md) for a complete WSL + Git Credential Manager + Copilot CLI setup guide instead.
+
 ### Prerequisites
 
 - Git for Windows
