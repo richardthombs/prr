@@ -1,5 +1,19 @@
 # Release Notes
 
+## 2026-03-23
+
+### WSL setup documentation added
+
+- Added `docs/wsl-setup.md` with a step-by-step guide for running PRR on Windows 11 via WSL, covering:
+  - WSL 2 + Ubuntu installation.
+  - Updating Ubuntu and installing Go, git, build-essential, and Make.
+  - Installing and configuring the Git Credential Manager (GCM) with the Windows credential store.
+  - Installing and configuring the GitHub Copilot CLI (`copilot`, not `gh`), including Node.js setup via nvm.
+  - Building and installing PRR from source inside WSL.
+  - A troubleshooting reference table for common issues.
+- Updated `docs/install.md` to add a WSL callout in the Windows section.
+- Updated `README.md` to link to the new WSL guide.
+
 ## 2026-03-07
 
 ### Distribution strategy pivot: source-first install guidance for macOS, Ubuntu, and Windows

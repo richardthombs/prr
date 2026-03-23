@@ -15,6 +15,7 @@ These Go commands are the canonical contributor workflow on macOS, Linux, and Wi
 
 - Fast path: `make install` (runs `go install ./cmd/prr`)
 - Platform-specific setup and PATH guidance: `docs/install.md`
+- WSL on Windows 11 (Git Credential Manager + Copilot CLI): `docs/wsl-setup.md`
 - Verify install: `prr version`
 
 ## Commands
