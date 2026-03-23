@@ -38,25 +38,7 @@ sudo apt update && sudo apt upgrade -y
 Install the tools that PRR requires:
 
 ```bash
-sudo apt install -y git curl
-```
-
-Then install Go 1.25+. The version packaged by Ubuntu may be older than required, so install directly from the official tarball:
-
-```bash
-# Download and install the latest Go release (check https://go.dev/dl/ for the current version)
-GO_VERSION=1.25.0
-curl -fsSL "https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz" | sudo tar -C /usr/local -xz
-
-# Add Go to your PATH
-echo 'export PATH=$PATH:/usr/local/go/bin' >> ~/.bashrc
-source ~/.bashrc
-```
-
-Verify:
-
-```bash
-go version   # should report go1.25+
+sudo apt install -y curl
 ```
 
 ## 4. Install and Configure the Git Credential Manager
@@ -159,18 +141,16 @@ If Copilot returns a suggestion, authentication is working correctly.
 
 ## 6. Install PRR
 
-With all prerequisites in place, install PRR:
+With all prerequisites in place, install PRR using the install script:
 
 ```bash
-git clone https://github.com/richardthombs/prr.git
-cd prr
-go install ./cmd/prr
+curl -fsSL https://raw.githubusercontent.com/richardthombs/prr/main/scripts/install.sh | bash
 ```
 
-Add the Go bin directory to your PATH if `prr` is not found after install:
+The script downloads the latest pre-built binary and installs it to `~/.local/bin`. If `prr` is not found after install, add that directory to your PATH:
 
 ```bash
-echo 'export PATH=$PATH:$(go env GOPATH)/bin' >> ~/.bashrc
+echo 'export PATH=$PATH:$HOME/.local/bin' >> ~/.bashrc
 source ~/.bashrc
 ```
 
@@ -188,5 +168,4 @@ prr version
 | GCM prompts for credentials every time | `credentialStore` not set to `wincredman` | See [§ 4.3](#43-configure-gcm-to-use-the-windows-credential-store) |
 | `copilot: command not found` | npm global bin directory not in PATH | Run `npm bin -g` to find the path and add it to `~/.bashrc` |
 | `copilot` reports auth error | Token expired or not stored | Re-run `copilot auth` |
-| `prr: command not found` | Go bin directory not in PATH | Add `$(go env GOPATH)/bin` to PATH (see [§ 6](#6-install-prr)) |
-| `go: command not found` | Go PATH not set | Run `source ~/.bashrc` or open a new terminal |
+| `prr: command not found` | `~/.local/bin` not in PATH | Add `$HOME/.local/bin` to PATH (see [§ 6](#6-install-prr)) |
