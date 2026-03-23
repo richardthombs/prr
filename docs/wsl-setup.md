@@ -35,10 +35,10 @@ sudo apt update && sudo apt upgrade -y
 
 ## 3. Install Prerequisites
 
-Install the tools that PRR and its dependencies require:
+Install the tools that PRR requires:
 
 ```bash
-sudo apt install -y git build-essential make
+sudo apt install -y git curl
 ```
 
 Then install Go 1.25+. The version packaged by Ubuntu may be older than required, so install directly from the official tarball:
@@ -157,16 +157,14 @@ echo "What time is it?" | copilot suggest
 
 If Copilot returns a suggestion, authentication is working correctly.
 
-## 6. Build and Install PRR
+## 6. Install PRR
 
-With all prerequisites in place, follow the standard source install steps:
+With all prerequisites in place, install PRR:
 
 ```bash
 git clone https://github.com/richardthombs/prr.git
 cd prr
-go build ./...
-go test ./...
-make install
+go install ./cmd/prr
 ```
 
 Add the Go bin directory to your PATH if `prr` is not found after install:
@@ -190,5 +188,5 @@ prr version
 | GCM prompts for credentials every time | `credentialStore` not set to `wincredman` | See [§ 4.3](#43-configure-gcm-to-use-the-windows-credential-store) |
 | `copilot: command not found` | npm global bin directory not in PATH | Run `npm bin -g` to find the path and add it to `~/.bashrc` |
 | `copilot` reports auth error | Token expired or not stored | Re-run `copilot auth` |
-| `prr: command not found` | Go bin directory not in PATH | Add `$(go env GOPATH)/bin` to PATH (see [§ 6](#6-build-and-install-prr)) |
+| `prr: command not found` | Go bin directory not in PATH | Add `$(go env GOPATH)/bin` to PATH (see [§ 6](#6-install-prr)) |
 | `go: command not found` | Go PATH not set | Run `source ~/.bashrc` or open a new terminal |
