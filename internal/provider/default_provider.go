@@ -527,7 +527,13 @@ func buildAzureIssueList(items []azureWorkItemResponse) []types.RelatedIssue {
 }
 
 func (p *defaultProvider) doRequest(req *http.Request) (string, error) {
-	resp, err := p.httpClient.Do(req)
+	return doHTTPRequest(p.httpClient, req)
+}
+
+// doHTTPRequest executes req using client, reads the body (up to 2 MiB), and
+// returns it as a string. Non-2xx status codes are treated as errors.
+func doHTTPRequest(client *http.Client, req *http.Request) (string, error) {
+	resp, err := client.Do(req)
 	if err != nil {
 		return "", err
 	}

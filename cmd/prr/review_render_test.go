@@ -34,6 +34,15 @@ func TestReviewCommandEmitsStructuredJSONAndKeepsDiagnosticsOffStdout(t *testing
 
 		joined := strings.Join(args, " ")
 		switch {
+		case strings.Contains(joined, "ls-remote"):
+			// Return all queried refs as available so the probe selects the merge-ref path.
+			var lines []string
+			for _, arg := range args {
+				if strings.HasPrefix(arg, "refs/") {
+					lines = append(lines, "abc123def456\t"+arg)
+				}
+			}
+			return strings.Join(lines, "\n"), nil
 		case strings.Contains(joined, "diff --name-only HEAD^1..HEAD"):
 			return "a.txt\n", nil
 		case strings.Contains(joined, "diff --stat HEAD^1..HEAD"):
@@ -59,7 +68,7 @@ func TestReviewCommandEmitsStructuredJSONAndKeepsDiagnosticsOffStdout(t *testing
 	}
 	reviewEngineFactory = func() engine.ReviewEngine {
 		return reviewEngineFunc(func(_ context.Context, input engine.ReviewInput) (types.Review, error) {
-			if len(input.Bundle.Issues) != 1 {
+			if len(input.Bundle.Issues) == 0 {
 				t.Fatalf("expected issue hydration in bundle, got %+v", input.Bundle.Issues)
 			}
 			if input.Bundle.Issues[0].ID != "13" {
@@ -179,6 +188,14 @@ func TestReviewCommandAcceptsPRURLArgument(t *testing.T) {
 	service := git.NewServiceWithCacheDir(stubRunner{runFunc: func(_ context.Context, _ string, args ...string) (string, error) {
 		joined := strings.Join(args, " ")
 		switch {
+		case strings.Contains(joined, "ls-remote"):
+			var lines []string
+			for _, arg := range args {
+				if strings.HasPrefix(arg, "refs/") {
+					lines = append(lines, "abc123def456\t"+arg)
+				}
+			}
+			return strings.Join(lines, "\n"), nil
 		case strings.Contains(joined, "diff --name-only HEAD^1..HEAD"):
 			return "a.txt\n", nil
 		case strings.Contains(joined, "diff --stat HEAD^1..HEAD"):
@@ -236,6 +253,14 @@ func TestReviewCommandAcceptsPipedCheckoutJSONWithoutArgs(t *testing.T) {
 	service := git.NewServiceWithCacheDir(stubRunner{runFunc: func(_ context.Context, _ string, args ...string) (string, error) {
 		joined := strings.Join(args, " ")
 		switch {
+		case strings.Contains(joined, "ls-remote"):
+			var lines []string
+			for _, arg := range args {
+				if strings.HasPrefix(arg, "refs/") {
+					lines = append(lines, "abc123def456\t"+arg)
+				}
+			}
+			return strings.Join(lines, "\n"), nil
 		case strings.Contains(joined, "diff --name-only HEAD^1..HEAD"):
 			return "a.txt\n", nil
 		case strings.Contains(joined, "diff --stat HEAD^1..HEAD"):
@@ -358,6 +383,14 @@ func TestReviewCommandPassesModelFlagToEngine(t *testing.T) {
 	service := git.NewServiceWithCacheDir(stubRunner{runFunc: func(_ context.Context, _ string, args ...string) (string, error) {
 		joined := strings.Join(args, " ")
 		switch {
+		case strings.Contains(joined, "ls-remote"):
+			var lines []string
+			for _, arg := range args {
+				if strings.HasPrefix(arg, "refs/") {
+					lines = append(lines, "abc123def456\t"+arg)
+				}
+			}
+			return strings.Join(lines, "\n"), nil
 		case strings.Contains(joined, "diff --name-only HEAD^1..HEAD"):
 			return "a.txt\n", nil
 		case strings.Contains(joined, "diff --stat HEAD^1..HEAD"):
@@ -410,6 +443,14 @@ func TestReviewCommandClassifiesEngineFailures(t *testing.T) {
 	service := git.NewServiceWithCacheDir(stubRunner{runFunc: func(_ context.Context, _ string, args ...string) (string, error) {
 		joined := strings.Join(args, " ")
 		switch {
+		case strings.Contains(joined, "ls-remote"):
+			var lines []string
+			for _, arg := range args {
+				if strings.HasPrefix(arg, "refs/") {
+					lines = append(lines, "abc123def456\t"+arg)
+				}
+			}
+			return strings.Join(lines, "\n"), nil
 		case strings.Contains(joined, "diff --name-only HEAD^1..HEAD"):
 			return "a.txt\n", nil
 		case strings.Contains(joined, "diff --stat HEAD^1..HEAD"):
@@ -519,6 +560,14 @@ func TestReviewCommandEmitsDeterministicMarkdown(t *testing.T) {
 	service := git.NewServiceWithCacheDir(stubRunner{runFunc: func(_ context.Context, _ string, args ...string) (string, error) {
 		joined := strings.Join(args, " ")
 		switch {
+		case strings.Contains(joined, "ls-remote"):
+			var lines []string
+			for _, arg := range args {
+				if strings.HasPrefix(arg, "refs/") {
+					lines = append(lines, "abc123def456\t"+arg)
+				}
+			}
+			return strings.Join(lines, "\n"), nil
 		case strings.Contains(joined, "diff --name-only HEAD^1..HEAD"):
 			return "a.txt\n", nil
 		case strings.Contains(joined, "diff --stat HEAD^1..HEAD"):

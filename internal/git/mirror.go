@@ -276,6 +276,62 @@ func HeadRefForPRID(prID int) string {
 	return mergeRefPrefix + strconv.Itoa(prID) + "/head"
 }
 
+// RemoteMergeRefSpec returns the remote refspec for a PR's merge ref,
+// as used with git fetch and git ls-remote.
+func RemoteMergeRefSpec(prID int) string {
+	return "refs/pull/" + strconv.Itoa(prID) + "/merge"
+}
+
+// RemoteHeadRefSpec returns the remote refspec for a PR's head ref.
+func RemoteHeadRefSpec(prID int) string {
+	return "refs/pull/" + strconv.Itoa(prID) + "/head"
+}
+
+// ProbeRemoteRefs queries the remote for which of the candidate refspecs
+// exist, using a single git ls-remote call. Unlike git fetch, ls-remote does
+// not print fatal errors to stderr for missing refs, making it suitable for
+// silent probing before deciding which ref to fetch.
+func (s *Service) ProbeRemoteRefs(ctx context.Context, bareDir, remote string, candidates []string, opts EnsureOptions) (map[string]bool, error) {
+	if len(candidates) == 0 {
+		return map[string]bool{}, nil
+	}
+
+	// In WhatIf mode no command is run; assume all candidates are available so
+	// that the subsequent fetch commands are logged correctly.
+	if opts.WhatIf {
+		available := make(map[string]bool, len(candidates))
+		for _, c := range candidates {
+			available[c] = true
+		}
+		return available, nil
+	}
+
+	trimmedBareDir := strings.TrimSpace(bareDir)
+	if trimmedBareDir == "" {
+		return nil, apperrors.WrapConfig("bare mirror directory is required; provide --bare-dir", nil)
+	}
+
+	trimmedRemote := strings.TrimSpace(remote)
+	if trimmedRemote == "" {
+		trimmedRemote = "origin"
+	}
+
+	args := append([]string{"-C", trimmedBareDir, "ls-remote", trimmedRemote}, candidates...)
+	out, err := s.runCommand(ctx, opts, "git", args...)
+	if err != nil {
+		return nil, apperrors.WrapRuntime("failed to probe remote refs", err)
+	}
+
+	available := make(map[string]bool, len(candidates))
+	for _, line := range strings.Split(out, "\n") {
+		parts := strings.Fields(line)
+		if len(parts) >= 2 {
+			available[strings.TrimSpace(parts[1])] = true
+		}
+	}
+	return available, nil
+}
+
 func (s *Service) FetchPRHeadRef(ctx context.Context, bareDir, remote string, prID int, opts EnsureOptions) (string, error) {
 	trimmedBareDir := strings.TrimSpace(bareDir)
 	if trimmedBareDir == "" {
@@ -298,6 +354,41 @@ func (s *Service) FetchPRHeadRef(ctx context.Context, bareDir, remote string, pr
 	_, err := s.runCommand(ctx, opts, "git", "-C", trimmedBareDir, "fetch", "--progress", trimmedRemote, destination)
 	if err != nil {
 		return "", apperrors.WrapProvider("failed to fetch PR head ref", err)
+	}
+
+	return headRef, nil
+}
+
+// FetchSourceBranchRef fetches a named source branch (e.g. from PR enrichment)
+// into the local head ref slot for the given PR ID, as a fallback when the
+// pull/<n>/head ref is unavailable (e.g. Azure DevOps draft PRs).
+func (s *Service) FetchSourceBranchRef(ctx context.Context, bareDir, remote string, prID int, sourceBranch string, opts EnsureOptions) (string, error) {
+	trimmedBareDir := strings.TrimSpace(bareDir)
+	if trimmedBareDir == "" {
+		return "", apperrors.WrapConfig("bare mirror directory is required; provide --bare-dir", nil)
+	}
+
+	trimmedRemote := strings.TrimSpace(remote)
+	if trimmedRemote == "" {
+		trimmedRemote = "origin"
+	}
+
+	if prID <= 0 {
+		return "", apperrors.WrapConfig("valid PR ID is required; provide --pr-id", nil)
+	}
+
+	trimmedBranch := strings.TrimSpace(sourceBranch)
+	if trimmedBranch == "" {
+		return "", apperrors.WrapConfig("source branch is required", nil)
+	}
+
+	headRef := HeadRefForPRID(prID)
+	sourceRef := "refs/heads/" + trimmedBranch
+	destination := sourceRef + ":" + headRef
+
+	_, err := s.runCommand(ctx, opts, "git", "-C", trimmedBareDir, "fetch", "--progress", trimmedRemote, destination)
+	if err != nil {
+		return "", apperrors.WrapProvider("failed to fetch PR source branch ref", err)
 	}
 
 	return headRef, nil

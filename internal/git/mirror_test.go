@@ -368,6 +368,56 @@ t.Fatalf("expected provider-classified error, got %v", err)
 }
 }
 
+func TestFetchSourceBranchRefUsesPRRNamespaceDestination(t *testing.T) {
+	runner := &recorderRunner{}
+	service := NewServiceWithCacheDir(runner, t.TempDir())
+
+	headRef, err := service.FetchSourceBranchRef(context.Background(), "/tmp/repo.git", "origin", 42, "feature/my-work", EnsureOptions{})
+	if err != nil {
+		t.Fatalf("expected source branch fetch to succeed, got %v", err)
+	}
+
+	if headRef != "refs/prr/pull/42/head" {
+		t.Fatalf("expected head ref namespace, got %q", headRef)
+	}
+
+	if len(runner.commands) != 1 {
+		t.Fatalf("expected one fetch command, got %d", len(runner.commands))
+	}
+
+	command := strings.Join(runner.commands[0], " ")
+	if !strings.Contains(command, "fetch --progress origin refs/heads/feature/my-work:refs/prr/pull/42/head") {
+		t.Fatalf("expected fetch of source branch into PRR namespace, got %q", command)
+	}
+}
+
+func TestFetchSourceBranchRefClassifiesErrorsAsProviderFailures(t *testing.T) {
+	runner := &recorderRunner{err: errors.New("branch not found")}
+	service := NewServiceWithCacheDir(runner, t.TempDir())
+
+	_, err := service.FetchSourceBranchRef(context.Background(), "/tmp/repo.git", "origin", 42, "feature/my-work", EnsureOptions{})
+	if err == nil {
+		t.Fatalf("expected provider-classified error")
+	}
+
+	if !strings.Contains(err.Error(), "PROVIDER_RESOLUTION") {
+		t.Fatalf("expected provider-classified error, got %v", err)
+	}
+}
+
+func TestFetchSourceBranchRefRejectsEmptyBranch(t *testing.T) {
+	runner := &recorderRunner{}
+	service := NewServiceWithCacheDir(runner, t.TempDir())
+
+	_, err := service.FetchSourceBranchRef(context.Background(), "/tmp/repo.git", "origin", 42, "", EnsureOptions{})
+	if err == nil {
+		t.Fatalf("expected error for empty source branch")
+	}
+	if !strings.Contains(err.Error(), "CONFIG") {
+		t.Fatalf("expected config error for empty source branch, got %v", err)
+	}
+}
+
 func TestResolveMergeBaseIssuesMergeBaseCommand(t *testing.T) {
 runner := stubRunner{runFunc: func(_ context.Context, _ string, args ...string) (string, error) {
 joined := strings.Join(args, " ")
@@ -387,4 +437,83 @@ t.Fatalf("expected merge base resolution to succeed, got %v", err)
 if base != "abc1234def5678" {
 t.Fatalf("expected trimmed merge base SHA, got %q", base)
 }
+}
+
+func TestProbeRemoteRefsReturnsAvailableRefs(t *testing.T) {
+	candidates := []string{"refs/pull/42/merge", "refs/pull/42/head"}
+	runner := stubRunner{runFunc: func(_ context.Context, _ string, args ...string) (string, error) {
+		joined := strings.Join(args, " ")
+		if strings.Contains(joined, "ls-remote") {
+			return "abc123\trefs/pull/42/merge\ndef456\trefs/pull/42/head\n", nil
+		}
+		return "", nil
+	}}
+
+	service := NewServiceWithCacheDir(runner, t.TempDir())
+	available, err := service.ProbeRemoteRefs(context.Background(), "/tmp/repo.git", "origin", candidates, EnsureOptions{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !available["refs/pull/42/merge"] {
+		t.Errorf("expected refs/pull/42/merge to be available")
+	}
+	if !available["refs/pull/42/head"] {
+		t.Errorf("expected refs/pull/42/head to be available")
+	}
+}
+
+func TestProbeRemoteRefsReturnsEmptyForMissingRefs(t *testing.T) {
+	candidates := []string{"refs/pull/99/merge", "refs/pull/99/head"}
+	runner := stubRunner{runFunc: func(_ context.Context, _ string, args ...string) (string, error) {
+		joined := strings.Join(args, " ")
+		if strings.Contains(joined, "ls-remote") {
+			return "", nil
+		}
+		return "", nil
+	}}
+
+	service := NewServiceWithCacheDir(runner, t.TempDir())
+	available, err := service.ProbeRemoteRefs(context.Background(), "/tmp/repo.git", "origin", candidates, EnsureOptions{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(available) != 0 {
+		t.Errorf("expected empty map for missing refs, got %v", available)
+	}
+}
+
+func TestProbeRemoteRefsReturnsAllInWhatIfMode(t *testing.T) {
+	candidates := []string{"refs/pull/7/merge", "refs/pull/7/head", "refs/heads/feature"}
+	runner := stubRunner{runFunc: func(_ context.Context, _ string, _ ...string) (string, error) {
+		t.Error("runner should not be called in WhatIf mode")
+		return "", nil
+	}}
+
+	service := NewServiceWithCacheDir(runner, t.TempDir())
+	available, err := service.ProbeRemoteRefs(context.Background(), "/tmp/repo.git", "origin", candidates, EnsureOptions{WhatIf: true})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	for _, c := range candidates {
+		if !available[c] {
+			t.Errorf("expected %q to be available in WhatIf mode", c)
+		}
+	}
+}
+
+func TestProbeRemoteRefsReturnsErrorOnCommandFailure(t *testing.T) {
+	candidates := []string{"refs/pull/1/merge"}
+	runner := stubRunner{runFunc: func(_ context.Context, _ string, args ...string) (string, error) {
+		joined := strings.Join(args, " ")
+		if strings.Contains(joined, "ls-remote") {
+			return "", errors.New("network failure")
+		}
+		return "", nil
+	}}
+
+	service := NewServiceWithCacheDir(runner, t.TempDir())
+	_, err := service.ProbeRemoteRefs(context.Background(), "/tmp/repo.git", "origin", candidates, EnsureOptions{})
+	if err == nil {
+		t.Fatal("expected error on command failure, got nil")
+	}
 }

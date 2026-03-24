@@ -84,7 +84,7 @@ func TestEnrichGitHubWarnsOnMalformedOutput(t *testing.T) {
 func TestEnrichPRRefDispatchesGitHub(t *testing.T) {
 	runner := &stubCLIRunner{output: "main\nabc1234\n"}
 	ref := testGitHubRef()
-	enriched := EnrichPRRef(context.Background(), ref, runner, func(string, ...any) {})
+	enriched := EnrichPRRef(context.Background(), ref, NewCLIEnricher(runner), func(string, ...any) {})
 
 	if enriched.BaseBranch != "main" {
 		t.Fatalf("expected dispatch to github enricher, got BaseBranch=%q", enriched.BaseBranch)
@@ -97,7 +97,7 @@ func TestEnrichPRRefWarnsForUnknownProvider(t *testing.T) {
 	warnf := func(format string, args ...any) { warnings = append(warnings, format) }
 
 	ref := types.PRRef{PRID: 1, Provider: "bitbucket", RepoURL: "https://bitbucket.org/org/repo"}
-	EnrichPRRef(context.Background(), ref, runner, warnf)
+	EnrichPRRef(context.Background(), ref, NewCLIEnricher(runner), warnf)
 
 	if len(warnings) == 0 {
 		t.Fatalf("expected warning for unsupported provider")
@@ -106,7 +106,7 @@ func TestEnrichPRRefWarnsForUnknownProvider(t *testing.T) {
 
 func TestEnrichAzureDevOpsPopulatesBaseBranchSHAAndPRURL(t *testing.T) {
 	runner := &stubCLIRunner{
-		output: `{"targetRefName":"refs/heads/main","lastMergeTargetCommit":"abc123","webUrl":"https://dev.azure.com/org/project/_git/repo/pullrequest/85820"}`,
+		output: `{"targetRefName":"refs/heads/main","lastMergeTargetCommit":"abc123","sourceRefName":"refs/heads/feature/my-work","lastMergeSourceCommit":"def456","webUrl":"https://dev.azure.com/org/project/_git/repo/pullrequest/85820"}`,
 	}
 	warnings := make([]string, 0)
 	warnf := func(format string, args ...any) { warnings = append(warnings, format) }
@@ -128,9 +128,26 @@ func TestEnrichAzureDevOpsPopulatesBaseBranchSHAAndPRURL(t *testing.T) {
 	}
 }
 
+func TestEnrichAzureDevOpsPopulatesSourceBranchAndSHA(t *testing.T) {
+	runner := &stubCLIRunner{
+		output: `{"targetRefName":"refs/heads/main","lastMergeTargetCommit":"abc123","sourceRefName":"refs/heads/feature/draft-work","lastMergeSourceCommit":"fff999","webUrl":"https://dev.azure.com/org/project/_git/repo/pullrequest/85984"}`,
+	}
+	warnf := func(string, ...any) {}
+
+	ref := types.PRRef{PRID: 85984, Provider: "azure-devops", RepoURL: "https://dev.azure.com/org/project/_git/repo"}
+	enriched := enrichAzureDevOps(context.Background(), ref, runner, warnf)
+
+	if enriched.SourceBranch != "feature/draft-work" {
+		t.Fatalf("expected SourceBranch 'feature/draft-work', got %q", enriched.SourceBranch)
+	}
+	if enriched.SourceSHA != "fff999" {
+		t.Fatalf("expected SourceSHA 'fff999', got %q", enriched.SourceSHA)
+	}
+}
+
 func TestEnrichAzureDevOpsDoesNotOverwriteExistingPRURL(t *testing.T) {
 	runner := &stubCLIRunner{
-		output: `{"targetRefName":"refs/heads/main","lastMergeTargetCommit":"abc123","webUrl":""}`,
+		output: `{"targetRefName":"refs/heads/main","lastMergeTargetCommit":"abc123","sourceRefName":"refs/heads/feature/my-work","lastMergeSourceCommit":"def456","webUrl":""}`,
 	}
 	warnings := make([]string, 0)
 	warnf := func(format string, args ...any) { warnings = append(warnings, format) }
@@ -150,10 +167,10 @@ func TestEnrichAzureDevOpsDoesNotOverwriteExistingPRURL(t *testing.T) {
 
 func TestEnrichPRRefDispatchesAzureDevOps(t *testing.T) {
 	runner := &stubCLIRunner{
-		output: `{"targetRefName":"refs/heads/develop","lastMergeTargetCommit":"def456","webUrl":"https://dev.azure.com/org/project/_git/repo/pullrequest/42"}`,
+		output: `{"targetRefName":"refs/heads/develop","lastMergeTargetCommit":"def456","sourceRefName":"refs/heads/feature/x","lastMergeSourceCommit":"aaa111","webUrl":"https://dev.azure.com/org/project/_git/repo/pullrequest/42"}`,
 	}
 	ref := types.PRRef{PRID: 42, Provider: "azure-devops", RepoURL: "https://dev.azure.com/org/project/_git/repo"}
-	enriched := EnrichPRRef(context.Background(), ref, runner, func(string, ...any) {})
+	enriched := EnrichPRRef(context.Background(), ref, NewCLIEnricher(runner), func(string, ...any) {})
 
 	if enriched.BaseBranch != "develop" {
 		t.Fatalf("expected dispatch to azure enricher, got BaseBranch=%q", enriched.BaseBranch)
@@ -161,6 +178,200 @@ func TestEnrichPRRefDispatchesAzureDevOps(t *testing.T) {
 	if enriched.PRURL != "https://dev.azure.com/org/project/_git/repo/pullrequest/42" {
 		t.Fatalf("expected canonical PRURL, got %q", enriched.PRURL)
 	}
+}
+
+func TestGitHubRESTEnricherPopulatesAllFields(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Authorization") != "Bearer gh-token" {
+			t.Fatalf("expected bearer token, got %q", r.Header.Get("Authorization"))
+		}
+		if !strings.Contains(r.URL.Path, "/pulls/3") {
+			t.Fatalf("unexpected path: %s", r.URL.Path)
+		}
+		_, _ = w.Write([]byte(`{"base":{"ref":"main","sha":"base111"},"head":{"ref":"feature/x","sha":"head222"},"html_url":"https://github.com/owner/repo/pull/3"}`))
+	}))
+	defer server.Close()
+
+	enricher := NewGitHubRESTEnricher(&http.Client{}, "gh-token", server.URL)
+	warnf := func(string, ...any) {}
+
+	ref := types.PRRef{PRID: 3, Provider: "github", RepoURL: "https://github.com/owner/repo"}
+	enriched := enricher.Enrich(context.Background(), ref, warnf)
+
+	if enriched.BaseBranch != "main" {
+		t.Fatalf("expected BaseBranch 'main', got %q", enriched.BaseBranch)
+	}
+	if enriched.BaseSHA != "base111" {
+		t.Fatalf("expected BaseSHA 'base111', got %q", enriched.BaseSHA)
+	}
+	if enriched.SourceBranch != "feature/x" {
+		t.Fatalf("expected SourceBranch 'feature/x', got %q", enriched.SourceBranch)
+	}
+	if enriched.SourceSHA != "head222" {
+		t.Fatalf("expected SourceSHA 'head222', got %q", enriched.SourceSHA)
+	}
+	if enriched.PRURL != "https://github.com/owner/repo/pull/3" {
+		t.Fatalf("expected PRURL, got %q", enriched.PRURL)
+	}
+}
+
+func TestGitHubRESTEnricherWarnsWhenTokenEmpty(t *testing.T) {
+	enricher := NewGitHubRESTEnricher(&http.Client{}, "", "https://api.github.com")
+	warnings := make([]string, 0)
+	warnf := func(format string, args ...any) { warnings = append(warnings, format) }
+
+	ref := testGitHubRef()
+	enriched := enricher.Enrich(context.Background(), ref, warnf)
+
+	if enriched.BaseSHA != "" {
+		t.Fatalf("expected no enrichment without token, got BaseSHA=%q", enriched.BaseSHA)
+	}
+	if len(warnings) == 0 || !strings.Contains(warnings[0], "not set") {
+		t.Fatalf("expected token-not-set warning, got %v", warnings)
+	}
+}
+
+func TestAzureDevOpsRESTEnricherPopulatesAllFields(t *testing.T) {
+	client := &http.Client{
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			if !strings.Contains(req.URL.String(), "pullRequests/42") {
+				t.Fatalf("unexpected URL: %s", req.URL.String())
+			}
+			body := `{"targetRefName":"refs/heads/main","lastMergeTargetCommit":{"commitId":"base999"},"sourceRefName":"refs/heads/feature/draft","lastMergeSourceCommit":{"commitId":"src888"},"_links":{"web":{"href":"https://dev.azure.com/org/project/_git/repo/pullrequest/42"}}}`
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Body:       io.NopCloser(strings.NewReader(body)),
+				Header:     make(http.Header),
+			}, nil
+		}),
+	}
+
+	enricher := NewAzureDevOpsRESTEnricher(client, "ado-token")
+	warnf := func(string, ...any) {}
+
+	ref := types.PRRef{PRID: 42, Provider: "azure-devops", RepoURL: "https://dev.azure.com/org/project/_git/repo"}
+	enriched := enricher.Enrich(context.Background(), ref, warnf)
+
+	if enriched.BaseBranch != "main" {
+		t.Fatalf("expected BaseBranch 'main', got %q", enriched.BaseBranch)
+	}
+	if enriched.BaseSHA != "base999" {
+		t.Fatalf("expected BaseSHA 'base999', got %q", enriched.BaseSHA)
+	}
+	if enriched.SourceBranch != "feature/draft" {
+		t.Fatalf("expected SourceBranch 'feature/draft', got %q", enriched.SourceBranch)
+	}
+	if enriched.SourceSHA != "src888" {
+		t.Fatalf("expected SourceSHA 'src888', got %q", enriched.SourceSHA)
+	}
+	if enriched.PRURL != "https://dev.azure.com/org/project/_git/repo/pullrequest/42" {
+		t.Fatalf("expected PRURL, got %q", enriched.PRURL)
+	}
+}
+
+func TestAzureDevOpsRESTEnricherWarnsWhenTokenEmpty(t *testing.T) {
+	enricher := NewAzureDevOpsRESTEnricher(&http.Client{}, "")
+	warnings := make([]string, 0)
+	warnf := func(format string, args ...any) { warnings = append(warnings, format) }
+
+	ref := types.PRRef{PRID: 1, Provider: "azure-devops", RepoURL: "https://dev.azure.com/org/project/_git/repo"}
+	enriched := enricher.Enrich(context.Background(), ref, warnf)
+
+	if enriched.BaseSHA != "" {
+		t.Fatalf("expected no enrichment without token, got BaseSHA=%q", enriched.BaseSHA)
+	}
+	if len(warnings) == 0 || !strings.Contains(warnings[0], "not set") {
+		t.Fatalf("expected token-not-set warning, got %v", warnings)
+	}
+}
+
+func TestCompositeEnricherUsesFirstWhenBaseSHAPopulated(t *testing.T) {
+	primary := &fixedEnricher{result: types.PRRef{BaseSHA: "primary-sha", BaseBranch: "main"}}
+	fallback := &fixedEnricher{result: types.PRRef{BaseSHA: "fallback-sha", BaseBranch: "develop"}}
+
+	c := newCompositeEnricher(primary, fallback)
+	ref := types.PRRef{PRID: 1, Provider: "github"}
+	enriched := c.Enrich(context.Background(), ref, func(string, ...any) {})
+
+	if enriched.BaseSHA != "primary-sha" {
+		t.Fatalf("expected primary BaseSHA, got %q", enriched.BaseSHA)
+	}
+	if fallback.called {
+		t.Fatalf("expected fallback not to be called when primary succeeds")
+	}
+}
+
+func TestCompositeEnricherFallsBackWhenBaseSHAEmpty(t *testing.T) {
+	primary := &fixedEnricher{result: types.PRRef{}} // no BaseSHA
+	fallback := &fixedEnricher{result: types.PRRef{BaseSHA: "fallback-sha", BaseBranch: "develop"}}
+
+	c := newCompositeEnricher(primary, fallback)
+	ref := types.PRRef{PRID: 1, Provider: "github"}
+	enriched := c.Enrich(context.Background(), ref, func(string, ...any) {})
+
+	if enriched.BaseSHA != "fallback-sha" {
+		t.Fatalf("expected fallback BaseSHA, got %q", enriched.BaseSHA)
+	}
+	if !fallback.called {
+		t.Fatalf("expected fallback to be called when primary returns empty BaseSHA")
+	}
+}
+
+func TestNewEnricherForModeCLIOnlyUsesNoREST(t *testing.T) {
+	runner := &stubCLIRunner{output: "main\nsha123\n"}
+	enricher := newEnricherForMode(runner, &http.Client{}, issueProviderModeCLI, "", "", "https://api.github.com")
+
+	ref := testGitHubRef()
+	enriched := enricher.Enrich(context.Background(), ref, func(string, ...any) {})
+
+	if enriched.BaseSHA != "sha123" {
+		t.Fatalf("expected CLI enrichment result, got BaseSHA=%q", enriched.BaseSHA)
+	}
+}
+
+func TestNewEnricherForModeRESTOnlySkipsCLI(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"base":{"ref":"main","sha":"rest-sha"},"head":{"ref":"feat","sha":"feat-sha"}}`))
+	}))
+	defer server.Close()
+
+	runner := &stubCLIRunner{err: errors.New("should not be called")}
+	enricher := newEnricherForMode(runner, &http.Client{}, issueProviderModeREST, "token", "", server.URL)
+
+	ref := testGitHubRef()
+	enriched := enricher.Enrich(context.Background(), ref, func(string, ...any) {})
+
+	if enriched.BaseSHA != "rest-sha" {
+		t.Fatalf("expected REST enrichment result, got BaseSHA=%q", enriched.BaseSHA)
+	}
+}
+
+func TestNewEnricherForModeCLIRESTFallsBackToREST(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"base":{"ref":"main","sha":"rest-sha"},"head":{"ref":"feat","sha":"feat-sha"}}`))
+	}))
+	defer server.Close()
+
+	runner := &stubCLIRunner{err: errors.New("gh not found")}
+	enricher := newEnricherForMode(runner, &http.Client{}, issueProviderModeCLIREST, "token", "", server.URL)
+
+	ref := testGitHubRef()
+	enriched := enricher.Enrich(context.Background(), ref, func(string, ...any) {})
+
+	if enriched.BaseSHA != "rest-sha" {
+		t.Fatalf("expected REST fallback result, got BaseSHA=%q", enriched.BaseSHA)
+	}
+}
+
+// fixedEnricher is a test double that always returns a fixed PRRef.
+type fixedEnricher struct {
+	result types.PRRef
+	called bool
+}
+
+func (f *fixedEnricher) Enrich(_ context.Context, _ types.PRRef, _ func(string, ...any)) types.PRRef {
+	f.called = true
+	return f.result
 }
 
 func TestGitHubRepoSlug(t *testing.T) {

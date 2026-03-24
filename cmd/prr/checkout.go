@@ -86,19 +86,51 @@ var checkoutCmd = &cobra.Command{
 			return err
 		}
 
-		mergeRef, err := service.FetchPRMergeRefWithOptions(context.Background(), bareDir, prRef.Remote, prRef.PRID, commonOpts)
-		var baseRef string
-		if err != nil {
+		// Probe which PR refs exist before fetching to avoid git printing fatal
+		// errors to stderr for refs that are unavailable (e.g. draft PRs).
+		mergeRefSpec := git.RemoteMergeRefSpec(prRef.PRID)
+		headRefSpec := git.RemoteHeadRefSpec(prRef.PRID)
+		probeRefs := []string{mergeRefSpec, headRefSpec}
+		if prRef.SourceBranch != "" {
+			probeRefs = append(probeRefs, "refs/heads/"+prRef.SourceBranch)
+		}
+		available, probeErr := service.ProbeRemoteRefs(context.Background(), bareDir, prRef.Remote, probeRefs, commonOpts)
+		if probeErr != nil {
+			return probeErr
+		}
+
+		var mergeRef, baseRef string
+		switch {
+		case available[mergeRefSpec]:
+			mergeRef, err = service.FetchPRMergeRefWithOptions(context.Background(), bareDir, prRef.Remote, prRef.PRID, commonOpts)
+			if err != nil {
+				return err
+			}
+		case available[headRefSpec]:
 			if prRef.BaseSHA == "" {
 				return provider.EnrichmentRequiredError(prRef.Provider)
 			}
-			warnf("merge ref unavailable (closed PR?), falling back to head ref with base %s", prRef.BaseSHA[:min(len(prRef.BaseSHA), 12)])
-			headRef, headErr := service.FetchPRHeadRef(context.Background(), bareDir, prRef.Remote, prRef.PRID, commonOpts)
-			if headErr != nil {
-				return headErr
+			warnf("merge ref unavailable (draft PR?), falling back to head ref with base %s", prRef.BaseSHA[:min(len(prRef.BaseSHA), 12)])
+			mergeRef, err = service.FetchPRHeadRef(context.Background(), bareDir, prRef.Remote, prRef.PRID, commonOpts)
+			if err != nil {
+				return err
 			}
-			mergeRef = headRef
 			baseRef = prRef.BaseSHA
+		case prRef.SourceBranch != "" && available["refs/heads/"+prRef.SourceBranch]:
+			if prRef.BaseSHA == "" {
+				return provider.EnrichmentRequiredError(prRef.Provider)
+			}
+			warnf("merge/head refs unavailable, falling back to source branch %q", prRef.SourceBranch)
+			mergeRef, err = service.FetchSourceBranchRef(context.Background(), bareDir, prRef.Remote, prRef.PRID, prRef.SourceBranch, commonOpts)
+			if err != nil {
+				return err
+			}
+			baseRef = prRef.BaseSHA
+		default:
+			if prRef.BaseSHA == "" {
+				return provider.EnrichmentRequiredError(prRef.Provider)
+			}
+			return apperrors.WrapProvider(fmt.Sprintf("no PR refs available on remote for PR #%d", prRef.PRID), nil)
 		}
 
 		workDir, err := service.ResolveWorktreeDirFromBareDir(bareDir, prRef.PRID)

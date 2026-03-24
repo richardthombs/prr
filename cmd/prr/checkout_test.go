@@ -51,13 +51,18 @@ func TestCheckoutEmitsPipelineEquivalentPayload(t *testing.T) {
 		}
 
 		joined := strings.Join(args, " ")
-		if !strings.Contains(joined, "clone --mirror") &&
-			!strings.Contains(joined, "fetch --progress origin pull/987654321/merge:refs/prr/pull/987654321/merge") &&
-			!strings.Contains(joined, "worktree add --detach") {
+		switch {
+		case strings.Contains(joined, "ls-remote"):
+			// Return the merge ref as available so the probe selects the happy path.
+			return "abc123def456\trefs/pull/987654321/merge", nil
+		case strings.Contains(joined, "clone --mirror"),
+			strings.Contains(joined, "fetch --progress origin pull/987654321/merge:refs/prr/pull/987654321/merge"),
+			strings.Contains(joined, "worktree add --detach"):
+			return "", nil
+		default:
 			t.Fatalf("unexpected git invocation %q", joined)
+			return "", nil
 		}
-
-		return "", nil
 	}}, t.TempDir())
 
 	mirrorServiceFactory = func(_ io.Writer) *git.Service {

@@ -13,8 +13,8 @@ var mirrorServiceFactory = func(stderr io.Writer) *git.Service {
 	return git.NewService(git.NewExecRunnerWithStderr(stderr))
 }
 
-var prEnricherFactory = func() provider.CLIRunner {
-	return git.NewExecRunner()
+var prEnricherFactory = func() provider.Enricher {
+	return provider.NewDefaultEnricher(git.NewExecRunner())
 }
 
 var issueRunnerFactory = func() provider.CLIRunner {
