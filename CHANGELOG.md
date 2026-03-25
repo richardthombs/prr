@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## v0.5.0 - 2026-03-25
+
+### Features
+- Unified configuration via `~/.prr-config.json` and `PRR_*` environment variables; env vars take precedence over the config file
+- `cacheDir` / `PRR_CACHE_DIR` — relocate both the mirror and worktree caches to a custom base directory
+- `issueProviderMode` / `PRR_ISSUE_PROVIDER_MODE` — control the issue-discovery backend
+- `githubToken` / `PRR_GITHUB_TOKEN` and `azureDevOpsToken` / `PRR_AZURE_DEVOPS_TOKEN` — supply auth tokens in config instead of environment
+- `githubApiBaseUrl` / `PRR_GITHUB_API_BASE_URL` — override the GitHub API base URL (useful for GitHub Enterprise)
+- `agentCommand` / `PRR_AGENT_COMMAND`, `agentArgs` / `PRR_AGENT_ARGS`, `agentModelArg` / `PRR_AGENT_MODEL_ARG` — customise the AI agent invocation
+- `agentModelName` / `PRR_AGENT_MODEL_NAME` — set a default model name; overridden per-run by the `--model` flag
+- `agentOutputMode` / `PRR_AGENT_OUTPUT_MODE` — select the agent output parsing strategy
+- `agentTimeoutSeconds` / `PRR_AGENT_TIMEOUT_SECONDS` — configure the agent execution timeout
+
 ## v0.4.0 - 2026-03-25
 
 ### Features
