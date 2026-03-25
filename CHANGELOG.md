@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## v0.4.0 - 2026-03-25
+
 ### Features
 - Add git progress feedback to stderr during mirror clone/fetch, and print a review commencement message when the review engine starts
 - Silent probe for available PR refs using `git ls-remote` before any fetch
