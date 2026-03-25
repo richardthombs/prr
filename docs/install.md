@@ -26,12 +26,6 @@ If `prr` is not found after install, add your Go bin directory to PATH:
 - Go 1.25+
 - Make (optional, only for `make install` convenience)
 
-Example with Homebrew:
-
-```bash
-brew install go git make
-```
-
 ### Install
 
 ```bash
