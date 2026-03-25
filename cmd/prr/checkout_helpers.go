@@ -2,7 +2,9 @@ package main
 
 import (
 	"io"
+	"strings"
 
+	"github.com/richardthombs/prr/internal/config"
 	apperrors "github.com/richardthombs/prr/internal/errors"
 	"github.com/richardthombs/prr/internal/git"
 	"github.com/richardthombs/prr/internal/provider"
@@ -10,11 +12,22 @@ import (
 )
 
 var mirrorServiceFactory = func(stderr io.Writer) *git.Service {
-	return git.NewService(git.NewExecRunnerWithStderr(stderr))
+	runner := git.NewExecRunnerWithStderr(stderr)
+	cfg, _ := config.LoadUserConfig()
+	if strings.TrimSpace(cfg.CacheDir) != "" {
+		return git.NewServiceWithBaseCacheDir(runner, cfg.CacheDir)
+	}
+	return git.NewService(runner)
 }
 
 var prEnricherFactory = func() provider.Enricher {
-	return provider.NewDefaultEnricher(git.NewExecRunner())
+	cfg, _ := config.LoadUserConfig()
+	return provider.NewEnricherWithValues(git.NewExecRunner(), cfg.IssueProviderMode, cfg.GitHubToken, cfg.AzureDevOpsToken, cfg.GitHubAPIBaseURL)
+}
+
+var providerFactory = func() provider.PRProvider {
+	cfg, _ := config.LoadUserConfig()
+	return provider.NewProviderWithValues(cfg.IssueProviderMode, cfg.GitHubToken, cfg.AzureDevOpsToken, cfg.GitHubAPIBaseURL)
 }
 
 var issueRunnerFactory = func() provider.CLIRunner {

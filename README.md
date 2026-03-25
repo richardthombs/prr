@@ -1,114 +1,89 @@
 # PRR
 
-PRR is a CLI tool that automates pull request review from a single command by creating an isolated merge snapshot, generating a deterministic diff bundle, and sending it to a review engine for actionable output. It is designed to save setup time, keep reviews consistent, and protect your active working copy by running in a separate worktree with clear, script-friendly success and failure signalling.
+PRR is a CLI tool that automates pull request review from a single command by creating an isolated merge snapshot, generating a deterministic diff bundle, augmenting it with information from linked issues, and sending it to a review engine for actionable output. It is designed to save setup time, keep reviews consistent, and protect your active working copy by running in a separate worktree with clear, script-friendly success and failure signalling.
 
-## Build and test (cross-platform source of truth)
+## Installation
 
-- Build all packages: `go build ./...`
-- Run all tests: `go test ./...`
-- Build CLI binary only: `go build -o ./prr ./cmd/prr`
+**Quick Install (macOS/Linux):**
+```bash
+curl -fsSL https://raw.githubusercontent.com/richardthombs/prr/main/scripts/install.sh | bash
+```
 
-These Go commands are the canonical contributor workflow on macOS, Linux, and Windows.
-`Makefile` targets are optional convenience helpers for Unix-like environments.
+**Windows (PowerShell):**
+```powershell
+irm https://raw.githubusercontent.com/richardthombs/prr/main/scripts/install.ps1 | iex
+```
 
-## Install from source (recommended)
-
-- Fast path: `make install` (runs `go install ./cmd/prr`)
-- Platform-specific setup and PATH guidance: `docs/install.md`
-- WSL on Windows 11 (Git Credential Manager + Copilot CLI): `docs/wsl-setup.md`
-- Verify install: `prr version`
+Verify installation:
+```bash
+prr version
+```
 
 ## Commands
 
-- `prr review <PR_URL>`  
-  Run an end-to-end review for a pull request using either numeric ID or full PR URL input. Emits a Markdown review report to stdout by default.
+- `prr review <PR_URL> [--json] [--verbose] [--keep] [--model <model_name>]`  
+   Run an end-to-end review for a pull request using either numeric ID or full PR URL input. Emits a Markdown review report to stdout by default
 
-- `prr review <PR_URL> --json`  
-  Emit structured JSON output (`summary`, `risk`, `findings`, `checklist`) instead of Markdown — for automation workflows and shell pipelines.
+- `prr check <PR_URL>`  
+   Clone and checkout the relvant branch, but don't perform a review. _(Useful for conveniently getting a worktree of the PR's branch without affecting your own clones)_
 
-- `prr review <PR_URL> --keep`  
-  Keep the isolated review worktree after the run for inspection.
-
-- `prr checkout <PR_URL> | prr review`  
-  Pipe checkout JSON directly into review so `prId`, `repoUrl`, `provider`, and `remote` are inferred from stdin.
-
-- `prr checkout <PR_URL> [--verbose] [--what-if]`
-  Resolve PR context, ensure/update mirror, fetch merge ref, and prepare/reset the isolated worktree in one command.
-  Emits a single JSON payload including `prId`, `repoUrl`, `remote`, `provider`, `bareDir`, `mergeRef`, `workDir`, `keep`, and `cleanup`.
-  Supports Azure DevOps and GitHub PR URL formats.
-
-- `prr review [<PR_ID>|<PR_URL>] --max-patch-bytes <bytes> --max-files <count>`  
-  Override safety limits for patch size and changed file count.
-
-- `prr review <PR_URL> --model <model_name>`
-  Select the Copilot model for this review run; PRR passes this through to Copilot as `--model`.
-
-- `prr review` issue context enrichment  
-  During review, PRR discovers linked issues/work items from the PR provider (GitHub or Azure DevOps) and embeds normalized issue context into the review bundle sent to the engine.
-
-- `prr --help`  
-  Show CLI help and available options.
+- `prr pwd <PR_URL>`
+   Returns the path of the worktree for the specified PR.
 
 - `prr version`  
-  Show the installed PRR version.
+   Show the installed PRR version.
 
-## Checkout example
+### Parameters
+- `PR_URL`
+   The URL to an Azure DevOps PR or a GitHub PR
 
-```bash
-# Single-step checkout for PR workspace preparation.
+- `model_name`
+   The name of the model to use when reviewing the PR. This should make sense to the agent you are invoking (Copilot is the only agent invoked currently)
 
-prr checkout "https://github.com/<owner>/<repo>/pull/<id>"
-```
-
-The `checkout` output includes workspace fields (for example `bareDir`, `mergeRef`, `workDir`) ready for downstream review pipeline stages.
-
-## Review examples
-
-```bash
-# Run review using full PR URL — Markdown output by default
-prr review "https://github.com/<owner>/<repo>/pull/<id>"
-
-# Emit structured JSON instead of Markdown (for automation)
-prr review "https://github.com/<owner>/<repo>/pull/<id>" --json
-
-# Run review from checkout JSON pipeline
-prr checkout "https://github.com/<owner>/<repo>/pull/<id>" | prr review
-```
-
-## Provider auth requirements for issue enrichment
-
-- PRR issue discovery mode is controlled by `PRR_ISSUE_PROVIDER_MODE`:
-  - `cli-rest` (default): use provider CLI first, then automatically fall back to REST on CLI failure/unavailability.
-  - `cli`: CLI-only discovery (no REST fallback).
-  - `rest`: REST-only discovery.
-- GitHub REST fallback requires `PRR_GITHUB_TOKEN`. Optionally set `PRR_GITHUB_API_BASE_URL` for non-default API base URLs (default: `https://api.github.com`).
-- Azure DevOps REST fallback requires `PRR_AZURE_DEVOPS_TOKEN`.
-- CLI mode uses provider CLIs as before (`gh` for GitHub, `az` for Azure DevOps).
-- GitHub issue discovery uses GraphQL under both CLI and REST modes to resolve closing/linked issues consistently.
-- If both CLI and REST paths fail (in `cli-rest` mode), `prr review` returns a provider error including both failure paths for diagnosis.
 
 ## Configuration
 
-PRR supports an optional `~/.prr-config.json` file in your home directory for persistent configuration.
+PRR is configured via `~/.prr-config.json` and/or environment variables. Environment variables always take precedence over the config file. If neither is set, the default value applies.
 
-### Review instructions
+### General
 
-By default, PRR instructs the review engine to `"Perform a code review of the included changes"`. You can replace this with custom instructions from a Markdown file:
+| JSON key | Environment variable | Default | Description |
+|---|---|---|---|
+| `cacheDir` | `PRR_CACHE_DIR` | `~/.cache/prr` | Base directory for the local git mirror cache. Bare repos are stored under `<cacheDir>/repos` and worktrees under `<cacheDir>/work`. |
+| `reviewInstructionsFile` | `PRR_REVIEW_INSTRUCTIONS_FILE` | *(built-in prompt)* | Path to a Markdown file whose contents replace the default review prompt. Must be an absolute path. If the file is absent or empty, the default is used. |
+
+### Issue discovery
+
+PRR can enrich reviews with linked issue context from GitHub or Azure DevOps.
+
+| JSON key | Environment variable | Default | Description |
+|---|---|---|---|
+| `issueProviderMode` | `PRR_ISSUE_PROVIDER_MODE` | `cli-rest` | How linked issues are fetched: `cli` (CLI only), `rest` (REST only), or `cli-rest` (CLI with automatic REST fallback). |
+| `githubToken` | `PRR_GITHUB_TOKEN` | — | Personal access token for GitHub REST and GraphQL API calls. Required for REST mode with GitHub. |
+| `azureDevOpsToken` | `PRR_AZURE_DEVOPS_TOKEN` | — | Personal access token for Azure DevOps REST API calls. Required for REST mode with Azure DevOps. |
+| `githubApiBaseUrl` | `PRR_GITHUB_API_BASE_URL` | `https://api.github.com` | Override the GitHub API base URL. Useful for GitHub Enterprise Server. |
+
+CLI mode uses `gh` for GitHub and `az` for Azure DevOps. If both CLI and REST fail in `cli-rest` mode, PRR returns a provider error with both failure paths for diagnosis.
+
+### Review agent
+
+| JSON key | Environment variable | Default | Description |
+|---|---|---|---|
+| `agentCommand` | `PRR_AGENT_COMMAND` | `copilot` | The CLI command used to invoke the review agent. |
+| `agentArgs` | `PRR_AGENT_ARGS` | `--allow-all-tools` | Arguments passed to the agent command (space-separated in env var form). |
+| `agentModelName` | `PRR_AGENT_MODEL_NAME` | — | Default AI model name to use. Overridden per-run by the `--model` flag. |
+| `agentModelArg` | `PRR_AGENT_MODEL_ARG` | `--model` | The flag name the agent uses to accept a model name (e.g. change to `--ai-model` if your agent binary differs). |
+| `agentOutputMode` | `PRR_AGENT_OUTPUT_MODE` | `json-extracted` | How the agent's output is parsed. `json-extracted` scans stdout for the first valid JSON object. |
+| `agentTimeoutSeconds` | `PRR_AGENT_TIMEOUT_SECONDS` | `120` | Maximum time in seconds to wait for the review agent before aborting. |
+
+### Example `~/.prr-config.json`
 
 ```json
 {
-  "reviewInstructionsFile": "/path/to/your/review-instructions.md"
+  "reviewInstructionsFile": "~/.config/prr/review-prompt.md",
+  "agentModelName": "gpt-4.5",
+  "issueProviderMode": "cli-rest",
+  "githubToken": "ghp_...",
+  "azureDevOpsToken": "..."
 }
 ```
-
-The file should be a Markdown document describing how you want the review engine to evaluate pull requests. For example, you might specify preferred coding standards, areas to focus on, or severity thresholds. If the file is absent or empty, PRR falls back to the default instruction.
-
-**Example `~/.prr-config.json`:**
-
-```json
-{
-  "reviewInstructionsFile": "/home/user/.config/prr/review-instructions.md"
-}
-```
-
-> **Note:** Paths in `reviewInstructionsFile` must be absolute.

@@ -12,8 +12,8 @@ import (
 	"strings"
 	"time"
 
-	apperrors "github.com/richardthombs/prr/internal/errors"
 	"github.com/richardthombs/prr/internal/config"
+	apperrors "github.com/richardthombs/prr/internal/errors"
 	"github.com/richardthombs/prr/internal/types"
 )
 

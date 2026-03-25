@@ -332,40 +332,40 @@ func TestEnsureMirrorWhatIfLogsWithoutExecutingCommands(t *testing.T) {
 }
 
 func TestFetchPRHeadRefUsesPRRNamespaceDestination(t *testing.T) {
-runner := &recorderRunner{}
-service := NewServiceWithCacheDir(runner, t.TempDir())
+	runner := &recorderRunner{}
+	service := NewServiceWithCacheDir(runner, t.TempDir())
 
-headRef, err := service.FetchPRHeadRef(context.Background(), "/tmp/repo.git", "origin", 42, EnsureOptions{})
-if err != nil {
-t.Fatalf("expected head ref fetch to succeed, got %v", err)
-}
+	headRef, err := service.FetchPRHeadRef(context.Background(), "/tmp/repo.git", "origin", 42, EnsureOptions{})
+	if err != nil {
+		t.Fatalf("expected head ref fetch to succeed, got %v", err)
+	}
 
-if headRef != "refs/prr/pull/42/head" {
-t.Fatalf("expected head ref namespace, got %q", headRef)
-}
+	if headRef != "refs/prr/pull/42/head" {
+		t.Fatalf("expected head ref namespace, got %q", headRef)
+	}
 
-if len(runner.commands) != 1 {
-t.Fatalf("expected one fetch command, got %d", len(runner.commands))
-}
+	if len(runner.commands) != 1 {
+		t.Fatalf("expected one fetch command, got %d", len(runner.commands))
+	}
 
-command := strings.Join(runner.commands[0], " ")
-if !strings.Contains(command, "fetch --progress origin pull/42/head:refs/prr/pull/42/head") {
-t.Fatalf("expected fetch destination to target PRR namespace, got %q", command)
-}
+	command := strings.Join(runner.commands[0], " ")
+	if !strings.Contains(command, "fetch --progress origin pull/42/head:refs/prr/pull/42/head") {
+		t.Fatalf("expected fetch destination to target PRR namespace, got %q", command)
+	}
 }
 
 func TestFetchPRHeadRefClassifiesErrorsAsProviderFailures(t *testing.T) {
-runner := &recorderRunner{err: errors.New("no head ref")}
-service := NewServiceWithCacheDir(runner, t.TempDir())
+	runner := &recorderRunner{err: errors.New("no head ref")}
+	service := NewServiceWithCacheDir(runner, t.TempDir())
 
-_, err := service.FetchPRHeadRef(context.Background(), "/tmp/repo.git", "origin", 99, EnsureOptions{})
-if err == nil {
-t.Fatalf("expected provider-classified error")
-}
+	_, err := service.FetchPRHeadRef(context.Background(), "/tmp/repo.git", "origin", 99, EnsureOptions{})
+	if err == nil {
+		t.Fatalf("expected provider-classified error")
+	}
 
-if !strings.Contains(err.Error(), "PROVIDER_RESOLUTION") {
-t.Fatalf("expected provider-classified error, got %v", err)
-}
+	if !strings.Contains(err.Error(), "PROVIDER_RESOLUTION") {
+		t.Fatalf("expected provider-classified error, got %v", err)
+	}
 }
 
 func TestFetchSourceBranchRefUsesPRRNamespaceDestination(t *testing.T) {
@@ -419,24 +419,24 @@ func TestFetchSourceBranchRefRejectsEmptyBranch(t *testing.T) {
 }
 
 func TestResolveMergeBaseIssuesMergeBaseCommand(t *testing.T) {
-runner := stubRunner{runFunc: func(_ context.Context, _ string, args ...string) (string, error) {
-joined := strings.Join(args, " ")
-if strings.Contains(joined, "merge-base") {
-return "abc1234def5678\n", nil
-}
-return "", nil
-}}
+	runner := stubRunner{runFunc: func(_ context.Context, _ string, args ...string) (string, error) {
+		joined := strings.Join(args, " ")
+		if strings.Contains(joined, "merge-base") {
+			return "abc1234def5678\n", nil
+		}
+		return "", nil
+	}}
 
-service := NewServiceWithCacheDir(runner, t.TempDir())
+	service := NewServiceWithCacheDir(runner, t.TempDir())
 
-base, err := service.ResolveMergeBase(context.Background(), "/tmp/repo.git", "refs/prr/pull/5/head", "HEAD", EnsureOptions{})
-if err != nil {
-t.Fatalf("expected merge base resolution to succeed, got %v", err)
-}
+	base, err := service.ResolveMergeBase(context.Background(), "/tmp/repo.git", "refs/prr/pull/5/head", "HEAD", EnsureOptions{})
+	if err != nil {
+		t.Fatalf("expected merge base resolution to succeed, got %v", err)
+	}
 
-if base != "abc1234def5678" {
-t.Fatalf("expected trimmed merge base SHA, got %q", base)
-}
+	if base != "abc1234def5678" {
+		t.Fatalf("expected trimmed merge base SHA, got %q", base)
+	}
 }
 
 func TestProbeRemoteRefsReturnsAvailableRefs(t *testing.T) {

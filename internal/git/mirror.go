@@ -42,6 +42,12 @@ func NewServiceWithCacheDir(runner Runner, cacheDir string) *Service {
 	return &Service{runner: runner, cacheDir: cacheDir}
 }
 
+// NewServiceWithBaseCacheDir creates a Service that stores bare mirrors under
+// baseCacheDir/repos and worktrees under baseCacheDir/work.
+func NewServiceWithBaseCacheDir(runner Runner, baseCacheDir string) *Service {
+	return &Service{runner: runner, cacheDir: filepath.Join(baseCacheDir, "repos")}
+}
+
 func (s *Service) EnsureMirror(ctx context.Context, repoURL string) (string, error) {
 	return s.EnsureMirrorWithOptions(ctx, repoURL, EnsureOptions{LockTimeout: defaultLockTimeout})
 }
@@ -267,7 +273,6 @@ func sanitizeSlugPart(value string) string {
 	return strings.Trim(builder.String(), "-")
 }
 
-
 func MergeRefForPRID(prID int) string {
 	return mergeRefPrefix + strconv.Itoa(prID) + "/merge"
 }
@@ -463,6 +468,9 @@ func (s *Service) withRepoLock(bareDir string, opts EnsureOptions, run func() er
 }
 
 func defaultMirrorCacheDir() string {
+	if v := strings.TrimSpace(os.Getenv("PRR_CACHE_DIR")); v != "" {
+		return filepath.Join(v, "repos")
+	}
 	userCacheDir, err := os.UserCacheDir()
 	if err != nil {
 		return filepath.Join(".", ".prr", "repos")

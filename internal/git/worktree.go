@@ -132,14 +132,9 @@ func (s *Service) ResolveWorktreeDirFromBareDir(bareDir string, prID int) (strin
 		return "", apperrors.WrapConfig("could not determine repository hash from bare mirror path", nil)
 	}
 
-	return filepath.Join(defaultWorktreeCacheDir(), repoHash, "pr-"+strconv.Itoa(prID)), nil
-}
-
-func defaultWorktreeCacheDir() string {
-	userCacheDir, err := os.UserCacheDir()
-	if err != nil {
-		return filepath.Join(".", ".prr", "work")
-	}
-
-	return filepath.Join(userCacheDir, "prr", "work")
+	// Derive the worktree base from the parent of the repos cache dir so that
+	// a custom cacheDir (via config or PRR_CACHE_DIR) keeps repos and worktrees
+	// co-located under the same root.
+	workBase := filepath.Join(filepath.Dir(s.cacheDir), "work")
+	return filepath.Join(workBase, repoHash, "pr-"+strconv.Itoa(prID)), nil
 }

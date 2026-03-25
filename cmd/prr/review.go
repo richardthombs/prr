@@ -34,7 +34,16 @@ func init() {
 }
 
 var reviewEngineFactory = func() engine.ReviewEngine {
-	return engine.NewDefaultAdapter()
+	cfg, _ := config.LoadUserConfig()
+	agentCfg := engine.AgentConfig{
+		Command:        firstNonEmpty(cfg.AgentCommand, "copilot"),
+		Args:           agentArgsOrDefault(cfg.AgentArgs, []string{"--allow-all-tools"}),
+		ModelArg:       firstNonEmpty(cfg.AgentModelArg, "--model"),
+		InputMode:      "stdin",
+		OutputMode:     firstNonEmpty(cfg.AgentOutputMode, "json-extracted"),
+		TimeoutSeconds: positiveIntOr(cfg.AgentTimeoutSeconds, 120),
+	}
+	return engine.NewCLIAdapter(agentCfg)
 }
 
 var reviewCmd = &cobra.Command{
@@ -89,6 +98,10 @@ var reviewCmd = &cobra.Command{
 		if err != nil {
 			return apperrors.WrapRuntime("failed to parse model flag", err)
 		}
+		if strings.TrimSpace(model) == "" {
+			modelCfg, _ := config.LoadUserConfig()
+			model = modelCfg.AgentModelName
+		}
 
 		useCheckoutContext := arg == "" && hasAuthoritativeCheckoutContext(stdinInput)
 
@@ -113,7 +126,7 @@ var reviewCmd = &cobra.Command{
 				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "[prr] warning: "+format+"\n", args...)
 			}
 		}
-		providerClient := provider.NewDefaultProvider()
+		providerClient := providerFactory()
 		if !useCheckoutContext {
 			prRef = provider.EnrichPRRef(context.Background(), prRef, prEnricherFactory(), warnf)
 		}
@@ -381,6 +394,20 @@ func firstNonEmpty(primary, fallback string) string {
 	}
 
 	return strings.TrimSpace(fallback)
+}
+
+func agentArgsOrDefault(args []string, fallback []string) []string {
+	if len(args) > 0 {
+		return args
+	}
+	return fallback
+}
+
+func positiveIntOr(n, fallback int) int {
+	if n > 0 {
+		return n
+	}
+	return fallback
 }
 
 func loadReviewInstructions() string {

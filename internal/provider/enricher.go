@@ -47,6 +47,17 @@ func NewDefaultEnricher(runner CLIRunner) Enricher {
 	return newEnricherForMode(runner, httpClient, mode, githubToken, azureToken, githubAPIBaseURL)
 }
 
+// NewEnricherWithValues creates an Enricher using explicit values rather than
+// environment variables. Callers are responsible for supplying resolved config.
+func NewEnricherWithValues(runner CLIRunner, mode, githubToken, azureDevOpsToken, githubAPIBaseURL string) Enricher {
+	parsedMode, _ := parseIssueProviderMode(mode)
+	httpClient := &http.Client{Timeout: 30 * time.Second}
+	return newEnricherForMode(runner, httpClient, parsedMode,
+		strings.TrimSpace(githubToken),
+		strings.TrimSpace(azureDevOpsToken),
+		firstNonEmptyTrimmed(githubAPIBaseURL, "https://api.github.com"))
+}
+
 // NewCLIEnricher creates an Enricher that uses only CLI tools (gh / az) for
 // both GitHub and Azure DevOps.  Primarily useful for tests and explicit CLI-only
 // configurations.
@@ -218,8 +229,8 @@ func (e *azureDevOpsRESTEnricher) Enrich(ctx context.Context, ref types.PRRef, w
 	}
 
 	var resp struct {
-		TargetRefName string `json:"targetRefName"`
-		SourceRefName string `json:"sourceRefName"`
+		TargetRefName         string `json:"targetRefName"`
+		SourceRefName         string `json:"sourceRefName"`
 		LastMergeTargetCommit struct {
 			CommitID string `json:"commitId"`
 		} `json:"lastMergeTargetCommit"`

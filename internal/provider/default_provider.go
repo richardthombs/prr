@@ -67,6 +67,20 @@ func NewDefaultProvider() PRProvider {
 	}
 }
 
+// NewProviderWithValues creates a PRProvider using explicit values rather than
+// environment variables. Callers are responsible for supplying resolved config.
+func NewProviderWithValues(mode, githubToken, azureDevOpsToken, githubAPIBaseURL string) PRProvider {
+	parsedMode, modeErr := parseIssueProviderMode(mode)
+	return &defaultProvider{
+		mode:             parsedMode,
+		httpClient:       &http.Client{Timeout: 30 * time.Second},
+		githubToken:      strings.TrimSpace(githubToken),
+		azureDevOpsToken: strings.TrimSpace(azureDevOpsToken),
+		githubAPIBaseURL: firstNonEmptyTrimmed(githubAPIBaseURL, "https://api.github.com"),
+		configErr:        modeErr,
+	}
+}
+
 func (p *defaultProvider) Resolve(_ context.Context, prID int, opts map[string]string) (types.PRRef, error) {
 	repoURL := opts["repoUrl"]
 	providerName := opts["provider"]
