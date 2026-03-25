@@ -22,8 +22,6 @@ These commands are the source of truth on macOS, Ubuntu Linux, and Windows:
 
 ## 3. Platform Guidance
 
-Platform-specific prerequisites and setup guidance are documented in `docs/install.md`.
-
 Required coverage:
 
 - macOS

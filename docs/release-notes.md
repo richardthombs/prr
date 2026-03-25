@@ -11,7 +11,6 @@
   - Installing and configuring the GitHub Copilot CLI (`copilot`, not `gh`), including Node.js setup via nvm.
   - Building and installing PRR from source inside WSL.
   - A troubleshooting reference table for common issues.
-- Updated `docs/install.md` to add a WSL callout in the Windows section.
 - Updated `README.md` to link to the new WSL guide.
 
 ## 2026-03-07
@@ -19,10 +18,6 @@
 ### Distribution strategy pivot: source-first install guidance for macOS, Ubuntu, and Windows
 
 - PRR is now documented as source-first distribution instead of prebuilt binary distribution.
-- Added `docs/install.md` with platform-specific prerequisites and install instructions for:
-  - macOS
-  - Ubuntu Linux
-  - Windows
 - Simplified `Makefile` to source-focused targets: `build`, `install`, `test`, `clean`.
 - Updated `README.md` to point contributors to source install and verification workflow.
 - Replaced release-process contract with source distribution and install contract guidance.
