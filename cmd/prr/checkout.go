@@ -143,6 +143,14 @@ var checkoutCmd = &cobra.Command{
 			return err
 		}
 
+		// Refine the base to the actual common ancestor so downstream diff
+		// shows only what this PR contributes.
+		if baseRef != "" {
+			if actualBase, mergeBaseErr := service.ResolveMergeBase(context.Background(), workDir, "HEAD", baseRef, commonOpts); mergeBaseErr == nil && actualBase != "" {
+				baseRef = actualBase
+			}
+		}
+
 		payload, err := json.Marshal(checkoutOutput{
 			PRID:     prRef.PRID,
 			RepoURL:  prRef.RepoURL,

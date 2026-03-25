@@ -365,8 +365,12 @@ func nonZeroExitDiagnostic(result commandResult) string {
 		return "unsupported copilot CLI invocation; verify installed copilot version/flags"
 	case strings.Contains(lower, "not logged in"),
 		strings.Contains(lower, "login required"),
-		strings.Contains(lower, "authentication"):
-		return "copilot authentication missing; run `copilot auth login`"
+		strings.Contains(lower, "authentication"),
+		strings.Contains(lower, "token"),
+		strings.Contains(lower, "authorization"),
+		strings.Contains(lower, "bearer "),
+		strings.Contains(lower, "unauthorized"):
+		return "copilot authentication missing or token invalid; check your Copilot CLI credentials"
 	case strings.Contains(lower, "allow-all-tools"),
 		strings.Contains(lower, "permission"),
 		strings.Contains(lower, "not allowed"):
@@ -383,7 +387,9 @@ func sanitizeDiagnostic(raw string) string {
 	}
 
 	lower := strings.ToLower(clean)
-	if strings.Contains(lower, "token") || strings.Contains(lower, "authorization") || strings.Contains(lower, "bearer ") {
+	// Only redact credential-like strings; leave quota/limit errors readable.
+	if (strings.Contains(lower, "token") || strings.Contains(lower, "authorization") || strings.Contains(lower, "bearer ")) &&
+		!strings.Contains(lower, "limit") && !strings.Contains(lower, "count") {
 		return "copilot returned an error (details redacted)"
 	}
 

@@ -204,6 +204,15 @@ var reviewCmd = &cobra.Command{
 				return err
 			}
 
+			// Refine the base to the actual common ancestor so the diff shows
+			// only what this PR contributes, not all differences between the
+			// two live branch tips.
+			if baseRef != "" {
+				if actualBase, mergeBaseErr := service.ResolveMergeBase(context.Background(), workDir, "HEAD", baseRef, commonOpts); mergeBaseErr == nil && actualBase != "" {
+					baseRef = actualBase
+				}
+			}
+
 			if !keep {
 				defer func() {
 					cleanupErr := service.CleanupWorktree(context.Background(), bareDir, workDir, commonOpts)
