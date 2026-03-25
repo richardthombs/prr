@@ -1,7 +1,22 @@
 # Changelog
 
-All notable changes to prr are documented here.
-This file is updated automatically by GoReleaser from conventional commit messages on each release.
+All notable changes to the prr project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+### Features
+- Add git progress feedback to stderr during mirror clone/fetch, and print a review commencement message when the review engine starts
+- Silent probe for available PR refs using `git ls-remote` before any fetch
+- Eliminate spurious `fatal:` messages from git on draft PRs
+- Implement `Enricher` interface with separate CLI and REST backends for GitHub and Azure DevOps
+
+### Bug Fixes
+- Add `--progress` flag to `git clone` and `git fetch` so progress output is shown on non-TTY stderr (e.g. piped or CI environments)
+- Fix `install.ps1`: strip `v` prefix from version string when constructing the archive filename
+- Use `git merge-base HEAD <baseSHA>` to derive the diff range on head-ref and source-branch fallback paths, preventing the diff from including unrelated upstream commits; show Copilot quota errors without credential redaction
 
 ## v0.3.0 - 2026-03-19
 
